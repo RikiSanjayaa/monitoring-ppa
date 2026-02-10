@@ -4,10 +4,8 @@ namespace App\Filament\Resources\KasusResource\Pages;
 
 use App\Exports\KasusExport;
 use App\Exports\KasusTemplateExport;
-use App\Exports\PenyelesaianTemplateExport;
 use App\Filament\Resources\KasusResource;
 use App\Imports\KasusImport;
-use App\Imports\PenyelesaianImport;
 use App\Models\Satker;
 use App\Support\KasusSummary;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -28,67 +26,38 @@ class ListKasuses extends ListRecords
     {
         return [
             Actions\CreateAction::make(),
-            Actions\Action::make('downloadKasusTemplate')
-                ->label('Template Import Kasus')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('gray')
-                ->visible(fn (): bool => Auth::user()?->isSuperAdmin() || Auth::user()?->isAdmin())
-                ->action(fn () => Excel::download(new KasusTemplateExport(), 'template-import-kasus.xlsx')),
-            Actions\Action::make('downloadPenyelesaianTemplate')
-                ->label('Template Import Penyelesaian')
-                ->icon('heroicon-o-document-arrow-down')
-                ->color('gray')
-                ->visible(fn (): bool => Auth::user()?->isSuperAdmin() || Auth::user()?->isAdmin())
-                ->action(fn () => Excel::download(new PenyelesaianTemplateExport(), 'template-import-penyelesaian.xlsx')),
-            Actions\Action::make('importKasus')
-                ->label('Import Kasus')
+            Actions\ActionGroup::make([
+                Actions\Action::make('downloadKasusTemplate')
+                    ->label('Download Template Kasus')
+                    ->icon('heroicon-o-document-arrow-down')
+                    ->action(fn () => Excel::download(new KasusTemplateExport(), 'template-import-kasus.xlsx')),
+                Actions\Action::make('importKasus')
+                    ->label('Import Kasus')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->form($this->getImportForm())
+                    ->action(function (array $data): void {
+                        $satkerId = $this->resolveSatkerId($data);
+                        $user = Auth::user();
+                        $path = Storage::disk('local')->path($data['file']);
+
+                        Excel::import(new KasusImport($satkerId, $user->id), $path);
+
+                        Notification::make()
+                            ->title('Import kasus selesai')
+                            ->success()
+                            ->send();
+                    }),
+            ])
+                ->label('Import')
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('warning')
                 ->visible(fn (): bool => Auth::user()?->isSuperAdmin() || Auth::user()?->isAdmin())
-                ->form($this->getImportForm())
-                ->action(function (array $data): void {
-                    $satkerId = $this->resolveSatkerId($data);
-                    $user = Auth::user();
-                    $path = Storage::disk('local')->path($data['file']);
-
-                    Excel::import(new KasusImport($satkerId, $user->id), $path);
-
-                    Notification::make()
-                        ->title('Import kasus selesai')
-                        ->success()
-                        ->send();
-                }),
-            Actions\Action::make('importPenyelesaian')
-                ->label('Import Penyelesaian')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->color('warning')
-                ->visible(fn (): bool => Auth::user()?->isSuperAdmin() || Auth::user()?->isAdmin())
-                ->form($this->getImportForm())
-                ->action(function (array $data): void {
-                    $satkerId = $this->resolveSatkerId($data);
-                    $path = Storage::disk('local')->path($data['file']);
-
-                    Excel::import(new PenyelesaianImport($satkerId), $path);
-
-                    Notification::make()
-                        ->title('Import penyelesaian selesai')
-                        ->success()
-                        ->send();
-                }),
-            Actions\Action::make('exportExcel')
-                ->label('Export Excel')
-                ->icon('heroicon-o-arrow-down-tray')
-                ->color('success')
-                ->action(function () {
-                    return Excel::download(
-                        KasusExport::fromQuery(clone $this->getFilteredTableQuery()),
-                        'kasus-'.now()->format('Ymd_His').'.xlsx',
-                    );
-                }),
+                ->button(),
             Actions\Action::make('exportPdf')
                 ->label('Export PDF')
                 ->icon('heroicon-o-document-text')
-                ->color('success')
+                ->color('danger')
+                ->button()
                 ->action(function () {
                     $records = (clone $this->getFilteredTableQuery())
                         ->with(['satker:id,nama', 'perkara:id,nama', 'penyelesaian:id,nama', 'petugas:id,nama'])
@@ -105,6 +74,17 @@ class ListKasuses extends ListRecords
                     return response()->streamDownload(
                         static fn () => print($pdf->output()),
                         'laporan-kasus-'.now()->format('Ymd_His').'.pdf',
+                    );
+                }),
+            Actions\Action::make('exportExcel')
+                ->label('Export Excel')
+                ->icon('heroicon-o-arrow-down-tray')
+                ->color('success')
+                ->button()
+                ->action(function () {
+                    return Excel::download(
+                        KasusExport::fromQuery(clone $this->getFilteredTableQuery()),
+                        'kasus-'.now()->format('Ymd_His').'.xlsx',
                     );
                 }),
         ];

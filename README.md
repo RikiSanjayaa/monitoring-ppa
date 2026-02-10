@@ -26,7 +26,6 @@ Aplikasi Laravel + Filament untuk monitoring penanganan perkara lintas satker/sa
   - Tabel ringkasan per satker + total
 - Import/Export:
   - Import kasus lengkap (Excel)
-  - Import penyelesaian saja (Excel)
   - Export data kasus (Excel)
   - Export laporan ringkasan + detail (PDF landscape)
 
