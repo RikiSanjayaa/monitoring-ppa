@@ -22,9 +22,14 @@ class SummaryTableWidget extends Widget
     protected function getViewData(): array
     {
         $query = KasusDashboardFilters::apply(Kasus::query(), $this->filters ?? []);
+        $records = (clone $query)
+            ->with('satker:id,nama')
+            ->get();
+        $penyelesaianColumns = KasusSummary::penyelesaianColumns($records);
 
         return [
-            'summaryRows' => KasusSummary::fromQuery($query),
+            'summaryRows' => KasusSummary::fromCollection($records, $penyelesaianColumns),
+            'penyelesaianColumns' => $penyelesaianColumns,
         ];
     }
 }

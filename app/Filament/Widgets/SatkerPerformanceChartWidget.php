@@ -31,8 +31,8 @@ class SatkerPerformanceChartWidget extends ChartWidget
         $records = KasusDashboardFilters::apply(Kasus::query(), $this->filters ?? [])
             ->with('satker:id,nama')
             ->get()
-            ->groupBy(fn(Kasus $kasus): string => $kasus->satker?->nama ?? '-')
-            ->map(fn($items): int => $items->count())
+            ->groupBy(fn (Kasus $kasus): string => $kasus->satker?->nama ?? '-')
+            ->map(fn ($items): int => $items->count())
             ->sortDesc()
             ->take(8);
 

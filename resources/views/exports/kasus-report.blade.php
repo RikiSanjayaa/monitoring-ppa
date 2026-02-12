@@ -134,6 +134,21 @@
 
     @php
         $recordsByJenis = $records->groupBy(fn($record) => $record->perkara?->nama ?? 'Lainnya');
+        $recapData = $recapData ?? [
+            'penyelesaian_columns' => collect(),
+            'rows' => collect(),
+            'totals' => [
+                'jumlah_korban' => 0,
+                'jumlah_tersangka' => 0,
+                'jumlah_saksi' => 0,
+                'lidik' => 0,
+                'sidik' => 0,
+                'penyelesaian_counts' => [],
+                'jumlah' => 0,
+            ],
+        ];
+        $penyelesaianColumns = $recapData['penyelesaian_columns'];
+        $hasPenyelesaianColumns = $penyelesaianColumns->isNotEmpty();
     @endphp
 
     @forelse ($recordsByJenis as $jenisKasus => $groupedRecords)
@@ -149,11 +164,12 @@
                     <th colspan="2">IDENTITAS</th>
                     <th rowspan="2">HUB. TERSANGKA DENGAN KORBAN</th>
                     <th rowspan="2">LIDIK</th>
-                    <th rowspan="2">HENTI LIDIK</th>
                     <th rowspan="2">SIDIK</th>
-                    <th rowspan="2">SP3</th>
-                    <th rowspan="2">P21</th>
-                    <th rowspan="2">VONIS</th>
+                    @forelse ($penyelesaianColumns as $column)
+                        <th rowspan="2">{{ strtoupper((string) $column['label']) }}</th>
+                    @empty
+                        <th rowspan="2">-</th>
+                    @endforelse
                     <th rowspan="2">KET</th>
                 </tr>
                 <tr>
@@ -164,9 +180,9 @@
             <tbody>
                 @foreach ($groupedRecords as $record)
                     @php
-                        $status = strtolower((string) ($record->penyelesaian?->nama ?? ''));
                         $korbanText = $record->korbans->pluck('nama')->join(', ');
                         $tersangkaText = $record->tersangkas->pluck('nama')->join(', ');
+                        $penyelesaianId = (int) ($record->penyelesaian_id ?? 0);
                     @endphp
                     <tr>
                         <td class="num">{{ $loop->iteration }}</td>
@@ -178,11 +194,12 @@
                         <td>{{ $tersangkaText !== '' ? $tersangkaText : ($record->nama_pelaku ?: '-') }}</td>
                         <td>{{ $record->hubungan_pelaku_dengan_korban ?: '-' }}</td>
                         <td class="center">{{ $record->dokumen_status?->value === 'lidik' ? '1' : '' }}</td>
-                        <td class="center">{{ str_contains($status, 'henti') ? '1' : '' }}</td>
                         <td class="center">{{ $record->dokumen_status?->value === 'sidik' ? '1' : '' }}</td>
-                        <td class="center">{{ str_contains($status, 'sp3') ? '1' : '' }}</td>
-                        <td class="center">{{ str_contains($status, 'p21') ? '1' : '' }}</td>
-                        <td class="center"></td>
+                        @forelse ($penyelesaianColumns as $column)
+                            <td class="center">{{ $penyelesaianId === (int) $column['id'] ? '1' : '' }}</td>
+                        @empty
+                            <td class="center"></td>
+                        @endforelse
                         <td class="small">{{ $record->latestRtl?->keterangan ?? '-' }}</td>
                     </tr>
                 @endforeach
@@ -211,11 +228,12 @@
             <col class="num-col">
             <col class="num-col">
             <col class="num-col">
-            <col class="num-col">
-            <col class="num-col">
-            <col class="num-col">
-            <col class="num-col">
-            <col class="num-col">
+            @foreach ($penyelesaianColumns as $column)
+                <col class="num-col">
+            @endforeach
+            @if (! $hasPenyelesaianColumns)
+                <col class="num-col">
+            @endif
             <col class="num-col">
             <col class="ket">
         </colgroup>
@@ -225,7 +243,8 @@
                 <th rowspan="2">JENIS TP</th>
                 <th rowspan="2">TP.PASAL</th>
                 <th colspan="3">JUMLAH</th>
-                <th colspan="7">PENYELESAIAN PERKARA</th>
+                <th colspan="2">DOKUMEN/GIAT</th>
+                <th colspan="{{ max(1, $penyelesaianColumns->count()) }}">PENYELESAIAN PERKARA</th>
                 <th rowspan="2">JML</th>
                 <th rowspan="2">KET</th>
             </tr>
@@ -234,106 +253,49 @@
                 <th>TERSANGKA</th>
                 <th>SAKSI</th>
                 <th>LIDIK</th>
-                <th>HENTI LIDIK</th>
                 <th>SIDIK</th>
-                <th>SP3</th>
-                <th>P21</th>
-                <th>DICABUT</th>
-                <th>LIMPAH</th>
+                @forelse ($penyelesaianColumns as $column)
+                    <th>{{ strtoupper((string) $column['label']) }}</th>
+                @empty
+                    <th>-</th>
+                @endforelse
             </tr>
         </thead>
         <tbody>
-            @php
-                $groups = $records->groupBy(fn($record) => $record->perkara?->nama ?? 'Lainnya')->values();
-            @endphp
-            @foreach ($groups as $group)
-                @php
-                    $first = $group->first();
-                    $jumlahKorban = $group->sum(
-                        fn($k) => $k->korbans->count() > 0 ? $k->korbans->count() : (filled($k->nama_korban) ? 1 : 0),
-                    );
-                    $jumlahTersangka = $group->sum(
-                        fn($k) => $k->tersangkas->count() > 0 ? $k->tersangkas->count() : (filled($k->nama_pelaku) ? 1 : 0),
-                    );
-                    $jumlahSaksi = $group->sum(fn($k) => $k->saksis->count());
-                    $lidik = $group->where('dokumen_status.value', 'lidik')->count();
-                    $hentiLidik = $group
-                        ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'henti'))
-                        ->count();
-                    $sidik = $group->where('dokumen_status.value', 'sidik')->count();
-                    $sp3 = $group
-                        ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'sp3'))
-                        ->count();
-                    $p21 = $group
-                        ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'p21'))
-                        ->count();
-                    $dicabut = $group
-                        ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'cabut'))
-                        ->count();
-                    $limpah = $group
-                        ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'limpah'))
-                        ->count();
-                    $jumlah = $lidik + $hentiLidik + $sidik + $sp3 + $p21 + $dicabut + $limpah;
-                @endphp
+            @foreach ($recapData['rows'] as $row)
                 <tr>
                     <td class="num">{{ $loop->iteration }}</td>
-                    <td>{{ $first?->perkara?->nama ?? 'Lainnya' }}</td>
-                    <td>{{ $first?->tindak_pidana_pasal ?: '-' }}</td>
-                    <td class="center">{{ $jumlahKorban }}</td>
-                    <td class="center">{{ $jumlahTersangka }}</td>
-                    <td class="center">{{ $jumlahSaksi }}</td>
-                    <td class="center">{{ $lidik }}</td>
-                    <td class="center">{{ $hentiLidik }}</td>
-                    <td class="center">{{ $sidik }}</td>
-                    <td class="center">{{ $sp3 }}</td>
-                    <td class="center">{{ $p21 }}</td>
-                    <td class="center">{{ $dicabut }}</td>
-                    <td class="center">{{ $limpah }}</td>
-                    <td class="center">{{ $jumlah }}</td>
+                    <td>{{ $row['jenis'] }}</td>
+                    <td>{{ $row['pasal'] }}</td>
+                    <td class="center">{{ $row['jumlah_korban'] }}</td>
+                    <td class="center">{{ $row['jumlah_tersangka'] }}</td>
+                    <td class="center">{{ $row['jumlah_saksi'] }}</td>
+                    <td class="center">{{ $row['lidik'] }}</td>
+                    <td class="center">{{ $row['sidik'] }}</td>
+                    @forelse ($penyelesaianColumns as $column)
+                        <td class="center">{{ $row['penyelesaian_counts'][$column['key']] ?? 0 }}</td>
+                    @empty
+                        <td class="center">0</td>
+                    @endforelse
+                    <td class="center">{{ $row['jumlah'] }}</td>
                     <td></td>
                 </tr>
             @endforeach
-            @php
-                $totalKorban = $records->sum(
-                    fn($k) => $k->korbans->count() > 0 ? $k->korbans->count() : (filled($k->nama_korban) ? 1 : 0),
-                );
-                $totalTersangka = $records->sum(
-                    fn($k) => $k->tersangkas->count() > 0 ? $k->tersangkas->count() : (filled($k->nama_pelaku) ? 1 : 0),
-                );
-                $totalSaksi = $records->sum(fn($k) => $k->saksis->count());
-                $totalLidik = $records->where('dokumen_status.value', 'lidik')->count();
-                $totalHentiLidik = $records
-                    ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'henti'))
-                    ->count();
-                $totalSidik = $records->where('dokumen_status.value', 'sidik')->count();
-                $totalSp3 = $records
-                    ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'sp3'))
-                    ->count();
-                $totalP21 = $records
-                    ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'p21'))
-                    ->count();
-                $totalDicabut = $records
-                    ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'cabut'))
-                    ->count();
-                $totalLimpah = $records
-                    ->filter(fn($k) => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'limpah'))
-                    ->count();
-                $grandTotal =
-                    $totalLidik + $totalHentiLidik + $totalSidik + $totalSp3 + $totalP21 + $totalDicabut + $totalLimpah;
-            @endphp
             <tr>
                 <td class="center" colspan="3"><strong>JUMLAH TOTAL</strong></td>
-                <td class="center"><strong>{{ $totalKorban }}</strong></td>
-                <td class="center"><strong>{{ $totalTersangka }}</strong></td>
-                <td class="center"><strong>{{ $totalSaksi }}</strong></td>
-                <td class="center"><strong>{{ $totalLidik }}</strong></td>
-                <td class="center"><strong>{{ $totalHentiLidik }}</strong></td>
-                <td class="center"><strong>{{ $totalSidik }}</strong></td>
-                <td class="center"><strong>{{ $totalSp3 }}</strong></td>
-                <td class="center"><strong>{{ $totalP21 }}</strong></td>
-                <td class="center"><strong>{{ $totalDicabut }}</strong></td>
-                <td class="center"><strong>{{ $totalLimpah }}</strong></td>
-                <td class="center"><strong>{{ $grandTotal }}</strong></td>
+                <td class="center"><strong>{{ $recapData['totals']['jumlah_korban'] }}</strong></td>
+                <td class="center"><strong>{{ $recapData['totals']['jumlah_tersangka'] }}</strong></td>
+                <td class="center"><strong>{{ $recapData['totals']['jumlah_saksi'] }}</strong></td>
+                <td class="center"><strong>{{ $recapData['totals']['lidik'] }}</strong></td>
+                <td class="center"><strong>{{ $recapData['totals']['sidik'] }}</strong></td>
+                @forelse ($penyelesaianColumns as $column)
+                    <td class="center">
+                        <strong>{{ $recapData['totals']['penyelesaian_counts'][$column['key']] ?? 0 }}</strong>
+                    </td>
+                @empty
+                    <td class="center"><strong>0</strong></td>
+                @endforelse
+                <td class="center"><strong>{{ $recapData['totals']['jumlah'] }}</strong></td>
                 <td></td>
             </tr>
         </tbody>

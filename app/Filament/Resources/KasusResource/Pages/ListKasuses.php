@@ -7,6 +7,7 @@ use App\Filament\Resources\KasusResource;
 use App\Imports\KasusImport;
 use App\Models\Satker;
 use App\Support\ExportDocumentTemplate;
+use App\Support\KasusRecapSummary;
 use App\Support\KasusTemplateSpreadsheet;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
@@ -74,6 +75,7 @@ class ListKasuses extends ListRecords
                             'latestRtl',
                         ])
                         ->get();
+                    $recapData = KasusRecapSummary::fromCollection($records);
 
                     $satkerId = $this->resolveExportSatkerId($records);
                     $userId = Auth::id();
@@ -86,6 +88,7 @@ class ListKasuses extends ListRecords
                         'mainTitle' => $titles['main'],
                         'recapTitle' => $titles['recap'],
                         'signatureBlock' => ExportDocumentTemplate::signatureBlock($userId, $satkerId),
+                        'recapData' => $recapData,
                     ])->setPaper('a4', 'landscape');
 
                     return response()->streamDownload(

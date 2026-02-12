@@ -17,14 +17,24 @@ class LaporanExport implements FromCollection, ShouldAutoSize, WithHeadings, Wit
 
     /**
      * @param  Collection<int, array<string, int|string>>  $summary
+     * @param  Collection<int, array{key: string, label: string, id: int}>  $penyelesaianColumns
      */
     public function __construct(
         private readonly Collection $summary,
+        private readonly Collection $penyelesaianColumns,
     ) {}
 
     public static function fromQuery(Builder $query): self
     {
-        return new self(KasusSummary::fromQuery($query));
+        $records = (clone $query)
+            ->with('satker:id,nama')
+            ->get();
+        $penyelesaianColumns = KasusSummary::penyelesaianColumns($records);
+
+        return new self(
+            KasusSummary::fromCollection($records, $penyelesaianColumns),
+            $penyelesaianColumns,
+        );
     }
 
     /**
@@ -40,18 +50,12 @@ class LaporanExport implements FromCollection, ShouldAutoSize, WithHeadings, Wit
      */
     public function headings(): array
     {
-        return [
+        return array_merge([
             'Unit Kerja',
             'Jumlah',
             'Lidik',
             'Sidik',
-            'Henti Lidik',
-            'P21',
-            'SP3',
-            'Diversi',
-            'RJ',
-            'Limpah',
-        ];
+        ], $this->penyelesaianColumns->pluck('label')->all());
     }
 
     /**
@@ -60,17 +64,17 @@ class LaporanExport implements FromCollection, ShouldAutoSize, WithHeadings, Wit
      */
     public function map($row): array
     {
-        return [
+        $mapped = [
             $row['unit_kerja'],
             $row['jumlah'],
             $row['lidik'],
             $row['sidik'],
-            $row['henti_lidik'],
-            $row['p21'],
-            $row['sp3'],
-            $row['diversi'],
-            $row['rj'],
-            $row['limpah'],
         ];
+
+        foreach ($this->penyelesaianColumns as $column) {
+            $mapped[] = $row[$column['key']] ?? 0;
+        }
+
+        return $mapped;
     }
 }

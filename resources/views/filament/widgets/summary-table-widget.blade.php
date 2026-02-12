@@ -8,12 +8,9 @@
                         <th class="bg-rose-600 px-3 py-2 text-right">Jumlah</th>
                         <th class="bg-sky-600 px-3 py-2 text-right">Lidik</th>
                         <th class="bg-sky-600 px-3 py-2 text-right">Sidik</th>
-                        <th class="bg-emerald-600 px-3 py-2 text-right">Henti Lidik</th>
-                        <th class="bg-emerald-600 px-3 py-2 text-right">P21</th>
-                        <th class="bg-emerald-600 px-3 py-2 text-right">SP3</th>
-                        <th class="bg-emerald-600 px-3 py-2 text-right">Diversi</th>
-                        <th class="bg-emerald-600 px-3 py-2 text-right">RJ</th>
-                        <th class="bg-emerald-600 px-3 py-2 text-right">Limpah</th>
+                        @foreach ($penyelesaianColumns as $column)
+                            <th class="bg-emerald-600 px-3 py-2 text-right">{{ $column['label'] }}</th>
+                        @endforeach
                     </tr>
                 </thead>
                 <tbody>
@@ -23,12 +20,9 @@
                             <td class="px-3 py-2 text-right">{{ $row['jumlah'] }}</td>
                             <td class="px-3 py-2 text-right">{{ $row['lidik'] }}</td>
                             <td class="px-3 py-2 text-right">{{ $row['sidik'] }}</td>
-                            <td class="px-3 py-2 text-right">{{ $row['henti_lidik'] }}</td>
-                            <td class="px-3 py-2 text-right">{{ $row['p21'] }}</td>
-                            <td class="px-3 py-2 text-right">{{ $row['sp3'] }}</td>
-                            <td class="px-3 py-2 text-right">{{ $row['diversi'] }}</td>
-                            <td class="px-3 py-2 text-right">{{ $row['rj'] }}</td>
-                            <td class="px-3 py-2 text-right">{{ $row['limpah'] }}</td>
+                            @foreach ($penyelesaianColumns as $column)
+                                <td class="px-3 py-2 text-right">{{ $row[$column['key']] ?? 0 }}</td>
+                            @endforeach
                         </tr>
                     @endforeach
                 </tbody>
