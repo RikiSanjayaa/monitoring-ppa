@@ -67,8 +67,16 @@ class Kasus extends Model
         static::addGlobalScope(new SatkerScope);
 
         static::creating(function (Kasus $kasus): void {
+            static::ensureUniqueNomorLp($kasus);
+
             if (! $kasus->created_by && Auth::id()) {
                 $kasus->created_by = Auth::id();
+            }
+        });
+
+        static::updating(function (Kasus $kasus): void {
+            if ($kasus->isDirty(['satker_id', 'nomor_lp'])) {
+                static::ensureUniqueNomorLp($kasus);
             }
         });
     }
@@ -168,5 +176,32 @@ class Kasus extends Model
     public function pelakuList(): string
     {
         return $this->tersangkaList();
+    }
+
+    private static function ensureUniqueNomorLp(Kasus $kasus): void
+    {
+        if (! $kasus->satker_id) {
+            return;
+        }
+
+        $base = trim((string) $kasus->nomor_lp);
+
+        if ($base === '') {
+            $base = sprintf('LP/SATKER-%d/%s', $kasus->satker_id, now()->format('YmdHis'));
+        }
+
+        $candidate = $base;
+        $counter = 2;
+
+        while (static::withoutGlobalScopes()
+            ->where('satker_id', $kasus->satker_id)
+            ->where('nomor_lp', $candidate)
+            ->when($kasus->exists, fn (Builder $query): Builder => $query->whereKeyNot($kasus->getKey()))
+            ->exists()) {
+            $candidate = sprintf('%s (%d)', $base, $counter);
+            $counter++;
+        }
+
+        $kasus->nomor_lp = $candidate;
     }
 }

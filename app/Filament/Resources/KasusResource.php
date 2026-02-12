@@ -310,7 +310,8 @@ class KasusResource extends Resource
                                     ->schema([
                                         Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Korban')),
                                         Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
-                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label(static::mutedLabel('Tanggal Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->label(static::mutedLabel('Tanggal Lahir'))
+                                            ->formatStateUsing(fn ($state): string => static::formatNullableDate($state)),
                                         Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
                                         Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
@@ -326,7 +327,8 @@ class KasusResource extends Resource
                                     ->schema([
                                         Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Tersangka')),
                                         Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
-                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label(static::mutedLabel('Tanggal Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->label(static::mutedLabel('Tanggal Lahir'))
+                                            ->formatStateUsing(fn ($state): string => static::formatNullableDate($state)),
                                         Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
                                         Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
@@ -342,7 +344,8 @@ class KasusResource extends Resource
                                     ->schema([
                                         Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Saksi')),
                                         Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
-                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label(static::mutedLabel('Tanggal Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->label(static::mutedLabel('Tanggal Lahir'))
+                                            ->formatStateUsing(fn ($state): string => static::formatNullableDate($state)),
                                         Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
                                         Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
@@ -500,6 +503,19 @@ class KasusResource extends Resource
     private static function mutedLabel(string $label): HtmlString
     {
         return new HtmlString('<span style="font-size:11px;color:#94a3b8;letter-spacing:.02em;">'.e($label).'</span>');
+    }
+
+    private static function formatNullableDate($state): string
+    {
+        if (! $state || $state === '-') {
+            return '-';
+        }
+
+        try {
+            return \Illuminate\Support\Carbon::parse((string) $state)->format('d-m-Y');
+        } catch (\Throwable) {
+            return '-';
+        }
     }
 
     private static function narrativeHtml(?string $text): string
