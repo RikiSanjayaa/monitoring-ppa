@@ -64,6 +64,11 @@ class AuditLogResource extends Resource
                 Tables\Filters\SelectFilter::make('module')
                     ->options([
                         'kasus' => 'Kasus',
+                        'rtl' => 'RTL',
+                        'kasus_korban' => 'Kasus Korban',
+                        'kasus_pelaku' => 'Kasus Pelaku',
+                        'kasus_saksi' => 'Kasus Saksi',
+                        'petugas' => 'Petugas',
                         'auth' => 'Autentikasi',
                     ]),
                 Tables\Filters\SelectFilter::make('action')

@@ -6,6 +6,7 @@ use App\Enums\UserRole;
 use App\Filament\Resources\KasusResource;
 use App\Models\Kasus;
 use App\Models\User;
+use App\Support\AuditChangeFormatter;
 use App\Support\AuditLogger;
 use Filament\Notifications\Actions\Action;
 use Filament\Notifications\Notification;
@@ -44,16 +45,7 @@ class KasusObserver
             return;
         }
 
-        $original = $kasus->getOriginal();
-
-        $formattedChanges = collect($changes)
-            ->mapWithKeys(fn ($newValue, string $field): array => [
-                $field => [
-                    'old' => $original[$field] ?? null,
-                    'new' => $newValue,
-                ],
-            ])
-            ->all();
+        $formattedChanges = AuditChangeFormatter::format($kasus, $changes);
 
         $importantChanged = collect(array_keys($changes))
             ->intersect(self::IMPORTANT_FIELDS)

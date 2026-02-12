@@ -9,7 +9,17 @@ use App\Filament\Widgets\SatkerPerformanceChartWidget;
 use App\Filament\Widgets\StatsOverviewWidget;
 use App\Filament\Widgets\SummaryTableWidget;
 use App\Models\Kasus;
+use App\Models\KasusKorban;
+use App\Models\KasusPelaku;
+use App\Models\KasusSaksi;
+use App\Models\Petugas;
+use App\Models\Rtl;
+use App\Observers\KasusKorbanObserver;
 use App\Observers\KasusObserver;
+use App\Observers\KasusPelakuObserver;
+use App\Observers\KasusSaksiObserver;
+use App\Observers\PetugasObserver;
+use App\Observers\RtlObserver;
 use App\Support\AuditLogger;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -33,6 +43,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Kasus::observe(KasusObserver::class);
+        Rtl::observe(RtlObserver::class);
+        KasusKorban::observe(KasusKorbanObserver::class);
+        KasusPelaku::observe(KasusPelakuObserver::class);
+        KasusSaksi::observe(KasusSaksiObserver::class);
+        Petugas::observe(PetugasObserver::class);
 
         Event::listen(Login::class, function (Login $event): void {
             AuditLogger::log(
