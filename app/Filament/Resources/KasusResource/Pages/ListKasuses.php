@@ -26,7 +26,9 @@ class ListKasuses extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            Actions\CreateAction::make(),
+            Actions\CreateAction::make()
+                ->label('Tambah')
+                ->icon('heroicon-o-plus'),
             Actions\ActionGroup::make([
                 Actions\Action::make('downloadKasusTemplate')
                     ->label('Download Template Kasus')

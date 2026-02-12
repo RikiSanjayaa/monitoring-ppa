@@ -15,6 +15,7 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\HtmlString;
 
 class KasusResource extends Resource
 {
@@ -225,42 +226,68 @@ class KasusResource extends Resource
     {
         return $infolist
             ->schema([
-                Infolists\Components\Section::make('Data Kasus')
+                Infolists\Components\Section::make('Ringkasan Kasus')
                     ->schema([
-                        Infolists\Components\TextEntry::make('satker.nama')->label('Satker'),
-                        Infolists\Components\TextEntry::make('nomor_lp')->label('Nomor LP'),
-                        Infolists\Components\TextEntry::make('tanggal_lp')->date('d-m-Y')->label('Tanggal LP'),
-                        Infolists\Components\TextEntry::make('perkara.nama')->label('Jenis Kasus'),
-                        Infolists\Components\TextEntry::make('tindak_pidana_pasal')
-                            ->label('Tindak Pidana/Pasal')
-                            ->default('-'),
-                        Infolists\Components\TextEntry::make('hubungan_pelaku_dengan_korban')
-                            ->label('Hubungan Tersangka dengan Korban')
-                            ->default('-'),
+                        Infolists\Components\TextEntry::make('satker.nama')
+                            ->label(static::mutedLabel('Satker')),
+                        Infolists\Components\TextEntry::make('nomor_lp')
+                            ->label(static::mutedLabel('Nomor LP'))
+                            ->badge()
+                            ->color('info'),
+                        Infolists\Components\TextEntry::make('tanggal_lp')
+                            ->date('d-m-Y')
+                            ->label(static::mutedLabel('Tanggal LP')),
                         Infolists\Components\TextEntry::make('dokumen_status')
-                            ->label('Dokumen/Giat')
-                            ->formatStateUsing(fn ($state): string => strtoupper((string) ($state?->value ?? $state))),
+                            ->label(static::mutedLabel('Dokumen/Giat'))
+                            ->badge()
+                            ->formatStateUsing(fn ($state): string => strtoupper((string) ($state?->value ?? $state)))
+                            ->color(fn ($state): string => ($state?->value ?? $state) === DokumenStatus::Sidik->value ? 'warning' : 'info'),
+                        Infolists\Components\TextEntry::make('perkara.nama')
+                            ->label(static::mutedLabel('Jenis Kasus'))
+                            ->badge()
+                            ->color('primary')
+                            ->default('-'),
+                        Infolists\Components\TextEntry::make('penyelesaian.nama')
+                            ->label(static::mutedLabel('Penyelesaian'))
+                            ->badge()
+                            ->color('success')
+                            ->default('-'),
+                        Infolists\Components\TextEntry::make('tindak_pidana_pasal')
+                            ->label(static::mutedLabel('Tindak Pidana/Pasal'))
+                            ->default('-')
+                            ->columnSpanFull(),
+                        Infolists\Components\TextEntry::make('hubungan_pelaku_dengan_korban')
+                            ->label(static::mutedLabel('Hubungan Tersangka dengan Korban'))
+                            ->default('-'),
+                        Infolists\Components\TextEntry::make('petugas_cards')
+                            ->label(static::mutedLabel('Petugas Penanganan'))
+                            ->state(fn (Kasus $record): string => static::petugasCardsHtml($record))
+                            ->html()
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(3),
+                Infolists\Components\Section::make('Uraian Penanganan')
+                    ->schema([
                         Infolists\Components\TextEntry::make('proses_pidana')
-                            ->label('Proses Pidana')
+                            ->label(static::mutedLabel('Proses Pidana'))
+                            ->formatStateUsing(fn (?string $state): string => static::narrativeHtml($state))
+                            ->html()
                             ->default('-')
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('kronologi_kejadian')
-                            ->label('Kronologi Kejadian')
+                            ->label(static::mutedLabel('Kronologi Kejadian'))
+                            ->formatStateUsing(fn (?string $state): string => static::narrativeHtml($state))
+                            ->html()
                             ->default('-')
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('laporan_polisi')
-                            ->label('Laporan Polisi')
+                            ->label(static::mutedLabel('Laporan Polisi'))
+                            ->formatStateUsing(fn (?string $state): string => static::narrativeHtml($state))
+                            ->html()
                             ->default('-')
                             ->columnSpanFull(),
-                        Infolists\Components\TextEntry::make('penyelesaian.nama')
-                            ->label('Penyelesaian')
-                            ->default('-'),
-                        Infolists\Components\TextEntry::make('petugas_list')
-                            ->label('Petugas')
-                            ->state(fn (Kasus $record): string => $record->petugas->pluck('nama')->join(', ') ?: '-')
-                            ->columnSpanFull(),
                     ])
-                    ->columns(2),
+                    ->columns(1),
                 Infolists\Components\Section::make('Lampiran')
                     ->schema([
                         Infolists\Components\TextEntry::make('kronologi_kejadian_file')
@@ -279,13 +306,13 @@ class KasusResource extends Resource
                         Infolists\Components\Fieldset::make('Korban')
                             ->schema([
                                 Infolists\Components\RepeatableEntry::make('korbans')
-                                    ->label('Daftar Korban')
+                                    ->label(static::mutedLabel('Daftar Korban'))
                                     ->schema([
-                                        Infolists\Components\TextEntry::make('nama')->label('Nama Korban'),
-                                        Infolists\Components\TextEntry::make('tempat_lahir')->label('Tempat Lahir')->default('-'),
-                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label('Tanggal Lahir')->default('-'),
-                                        Infolists\Components\TextEntry::make('hp')->label('No HP')->default('-'),
-                                        Infolists\Components\TextEntry::make('alamat')->label('Alamat')->columnSpanFull()->default('-'),
+                                        Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Korban')),
+                                        Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label(static::mutedLabel('Tanggal Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
+                                        Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
                                     ->columns(2)
                                     ->columnSpanFull(),
@@ -295,13 +322,13 @@ class KasusResource extends Resource
                         Infolists\Components\Fieldset::make('Tersangka')
                             ->schema([
                                 Infolists\Components\RepeatableEntry::make('tersangkas')
-                                    ->label('Daftar Tersangka')
+                                    ->label(static::mutedLabel('Daftar Tersangka'))
                                     ->schema([
-                                        Infolists\Components\TextEntry::make('nama')->label('Nama Tersangka'),
-                                        Infolists\Components\TextEntry::make('tempat_lahir')->label('Tempat Lahir')->default('-'),
-                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label('Tanggal Lahir')->default('-'),
-                                        Infolists\Components\TextEntry::make('hp')->label('No HP')->default('-'),
-                                        Infolists\Components\TextEntry::make('alamat')->label('Alamat')->columnSpanFull()->default('-'),
+                                        Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Tersangka')),
+                                        Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label(static::mutedLabel('Tanggal Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
+                                        Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
                                     ->columns(2)
                                     ->columnSpanFull(),
@@ -311,13 +338,13 @@ class KasusResource extends Resource
                         Infolists\Components\Fieldset::make('Saksi')
                             ->schema([
                                 Infolists\Components\RepeatableEntry::make('saksis')
-                                    ->label('Daftar Saksi')
+                                    ->label(static::mutedLabel('Daftar Saksi'))
                                     ->schema([
-                                        Infolists\Components\TextEntry::make('nama')->label('Nama Saksi'),
-                                        Infolists\Components\TextEntry::make('tempat_lahir')->label('Tempat Lahir')->default('-'),
-                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label('Tanggal Lahir')->default('-'),
-                                        Infolists\Components\TextEntry::make('hp')->label('No HP')->default('-'),
-                                        Infolists\Components\TextEntry::make('alamat')->label('Alamat')->columnSpanFull()->default('-'),
+                                        Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Saksi')),
+                                        Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label(static::mutedLabel('Tanggal Lahir'))->default('-'),
+                                        Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
+                                        Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
                                     ->columns(2)
                                     ->columnSpanFull(),
@@ -440,13 +467,53 @@ class KasusResource extends Resource
                 'satker:id,nama',
                 'perkara:id,nama',
                 'penyelesaian:id,nama',
-                'petugas:id,nama',
+                'petugas:id,nama,pangkat,nrp',
                 'korbans:id,kasus_id,nama,tempat_lahir,tanggal_lahir,alamat,hp',
                 'tersangkas:id,kasus_id,nama,tempat_lahir,tanggal_lahir,alamat,hp',
                 'saksis:id,kasus_id,nama,tempat_lahir,tanggal_lahir,alamat,hp',
                 'latestRtl',
                 'rtls:id,kasus_id,tanggal,keterangan',
             ]);
+    }
+
+    private static function petugasCardsHtml(Kasus $record): string
+    {
+        if ($record->petugas->isEmpty()) {
+            return '<span style="color:#9ca3af;">Belum ada petugas ditugaskan.</span>';
+        }
+
+        return $record->petugas
+            ->map(function ($petugas): string {
+                $url = PetugasResource::getUrl('view', ['record' => $petugas]);
+                $subtitle = trim(implode(' | ', array_filter([$petugas->pangkat, $petugas->nrp])));
+
+                return sprintf(
+                    '<a href="%s" style="display:inline-flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid #374151;border-radius:10px;text-decoration:none;background:rgba(59,130,246,.08);margin:0 8px 8px 0;"><span style="font-weight:600;color:#e5e7eb;">%s</span><span style="font-size:11px;color:#9ca3af;">%s</span></a>',
+                    e($url),
+                    e($petugas->nama),
+                    e($subtitle !== '' ? $subtitle : 'Detail petugas'),
+                );
+            })
+            ->join('');
+    }
+
+    private static function mutedLabel(string $label): HtmlString
+    {
+        return new HtmlString('<span style="font-size:11px;color:#94a3b8;letter-spacing:.02em;">'.e($label).'</span>');
+    }
+
+    private static function narrativeHtml(?string $text): string
+    {
+        $value = trim((string) $text);
+
+        if ($value === '') {
+            $value = '-';
+        }
+
+        return sprintf(
+            '<div style="padding:10px 12px;border:1px solid #374151;border-radius:10px;background:rgba(148,163,184,.08);line-height:1.6;">%s</div>',
+            nl2br(e($value)),
+        );
     }
 
     private static function attachmentPreviewHtml(?string $path): string

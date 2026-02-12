@@ -43,7 +43,9 @@ class RtlsRelationManager extends RelationManager
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->headerActions([
-                Tables\Actions\CreateAction::make(),
+                Tables\Actions\CreateAction::make()
+                    ->label('Tambah')
+                    ->icon('heroicon-o-plus'),
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
