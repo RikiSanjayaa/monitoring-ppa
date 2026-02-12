@@ -37,8 +37,8 @@ class KasusExport implements FromCollection, ShouldAutoSize, WithCustomStartCell
                 'perkara:id,nama',
                 'penyelesaian:id,nama',
                 'petugas:id,nama',
-                'korbans:id,kasus_id,nama,tempat_lahir,tanggal_lahir,hp',
-                'tersangkas:id,kasus_id,nama,tempat_lahir,tanggal_lahir,hp',
+                'korbans:id,kasus_id,nama,tempat_lahir,tanggal_lahir,alamat,hp',
+                'tersangkas:id,kasus_id,nama,tempat_lahir,tanggal_lahir,alamat,hp',
                 'saksis:id,kasus_id,nama,tempat_lahir,tanggal_lahir,hp',
                 'latestRtl',
             ])
@@ -100,9 +100,11 @@ class KasusExport implements FromCollection, ShouldAutoSize, WithCustomStartCell
      */
     public function map($row): array
     {
+        $korbanUtama = $row->korbans->first();
+        $tersangkaUtama = $row->tersangkas->first();
         $ttl = trim(implode(', ', array_filter([
-            $row->tempat_lahir_korban,
-            $row->tanggal_lahir_korban?->format('d-m-Y'),
+            $korbanUtama?->tempat_lahir,
+            $korbanUtama?->tanggal_lahir?->format('d-m-Y'),
         ])));
 
         $korbanList = $row->korbans->pluck('nama')->join(', ');
@@ -112,17 +114,17 @@ class KasusExport implements FromCollection, ShouldAutoSize, WithCustomStartCell
             $row->nomor_lp,
             $row->tanggal_lp?->format('d-m-Y') ?? '-',
             $row->satker?->nama ?? '-',
-            $korbanList !== '' ? $korbanList : $row->nama_korban,
-            (string) ($row->tempat_lahir_korban ?? '-'),
-            $row->tanggal_lahir_korban?->format('d-m-Y') ?? '-',
-            $ttl,
-            (string) $row->alamat_korban,
-            (string) $row->hp_korban,
-            (string) ($tersangkaList !== '' ? $tersangkaList : ($row->nama_pelaku ?? '-')),
-            (string) ($row->tempat_lahir_pelaku ?? '-'),
-            $row->tanggal_lahir_pelaku?->format('d-m-Y') ?? '-',
-            (string) ($row->alamat_pelaku ?? '-'),
-            (string) ($row->hp_pelaku ?? '-'),
+            $korbanList !== '' ? $korbanList : '-',
+            (string) ($korbanUtama?->tempat_lahir ?? '-'),
+            $korbanUtama?->tanggal_lahir?->format('d-m-Y') ?? '-',
+            $ttl !== '' ? $ttl : '-',
+            (string) ($korbanUtama?->alamat ?? '-'),
+            (string) ($korbanUtama?->hp ?? '-'),
+            (string) ($tersangkaList !== '' ? $tersangkaList : '-'),
+            (string) ($tersangkaUtama?->tempat_lahir ?? '-'),
+            $tersangkaUtama?->tanggal_lahir?->format('d-m-Y') ?? '-',
+            (string) ($tersangkaUtama?->alamat ?? '-'),
+            (string) ($tersangkaUtama?->hp ?? '-'),
             $row->saksis->map(function ($saksi): string {
                 $tanggalLahir = $saksi->tanggal_lahir?->format('d-m-Y') ?? '-';
 

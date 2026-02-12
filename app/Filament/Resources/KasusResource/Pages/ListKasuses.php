@@ -2,22 +2,14 @@
 
 namespace App\Filament\Resources\KasusResource\Pages;
 
-use App\Exports\KasusTemplateExport;
 use App\Filament\Resources\KasusResource;
-use App\Imports\KasusImport;
-use App\Models\Satker;
 use App\Support\ExportDocumentTemplate;
 use App\Support\KasusRecapSummary;
 use App\Support\KasusTemplateSpreadsheet;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
-use Filament\Forms;
-use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
-use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ListKasuses extends ListRecords
@@ -30,33 +22,6 @@ class ListKasuses extends ListRecords
             Actions\CreateAction::make()
                 ->label('Tambah')
                 ->icon('heroicon-o-plus'),
-            Actions\ActionGroup::make([
-                Actions\Action::make('downloadKasusTemplate')
-                    ->label('Download Template Kasus')
-                    ->icon('heroicon-o-document-arrow-down')
-                    ->action(fn () => Excel::download(new KasusTemplateExport, 'template-import-kasus.xlsx')),
-                Actions\Action::make('importKasus')
-                    ->label('Import Kasus')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->form($this->getImportForm())
-                    ->action(function (array $data): void {
-                        $satkerId = $this->resolveSatkerId($data);
-                        $user = Auth::user();
-                        $path = Storage::disk('local')->path($data['file']);
-
-                        Excel::import(new KasusImport($satkerId, $user->id), $path);
-
-                        Notification::make()
-                            ->title('Import kasus selesai')
-                            ->success()
-                            ->send();
-                    }),
-            ])
-                ->label('Import')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->color('warning')
-                ->visible(fn (): bool => Auth::user()?->isSuperAdmin() || Auth::user()?->isAdmin())
-                ->button(),
             Actions\Action::make('exportPdf')
                 ->label('Export PDF')
                 ->icon('heroicon-o-document-text')
@@ -111,6 +76,7 @@ class ListKasuses extends ListRecords
                             'korbans:id,kasus_id,nama',
                             'tersangkas:id,kasus_id,nama',
                             'saksis:id,kasus_id,nama',
+                            'latestRtl',
                         ])
                         ->get();
 
@@ -129,62 +95,14 @@ class ListKasuses extends ListRecords
     }
 
     /**
-     * @return array<int, Forms\Components\Component>
-     */
-    private function getImportForm(): array
-    {
-        return [
-            Forms\Components\Select::make('satker_id')
-                ->label('Satker')
-                ->options(fn (): array => Satker::query()->orderBy('nama')->pluck('nama', 'id')->all())
-                ->searchable()
-                ->visible(fn (): bool => Auth::user()?->isSuperAdmin() ?? false)
-                ->required(fn (): bool => Auth::user()?->isSuperAdmin() ?? false),
-            Forms\Components\FileUpload::make('file')
-                ->label('File Import')
-                ->acceptedFileTypes([
-                    'application/vnd.ms-excel',
-                    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                    'text/csv',
-                ])
-                ->directory('imports')
-                ->disk('local')
-                ->preserveFilenames()
-                ->required(),
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $data
-     */
-    private function resolveSatkerId(array $data): int
-    {
-        $user = Auth::user();
-
-        if ($user?->isAdmin() && $user->satker_id) {
-            return $user->satker_id;
-        }
-
-        $satkerId = (int) ($data['satker_id'] ?? 0);
-
-        if (! $satkerId) {
-            throw ValidationException::withMessages([
-                'satker_id' => 'Satker wajib dipilih.',
-            ]);
-        }
-
-        return $satkerId;
-    }
-
-    /**
      * @param  \Illuminate\Support\Collection<int, \App\Models\Kasus>  $records
      */
     private function resolveExportSatkerId($records): ?int
     {
         $user = Auth::user();
 
-        if ($user?->isAdmin() && $user->satker_id) {
-            return (int) $user->satker_id;
+        if (data_get($user, 'role') === 'admin' && data_get($user, 'satker_id')) {
+            return (int) data_get($user, 'satker_id');
         }
 
         $satkerIds = $records->pluck('satker_id')->filter()->unique()->values();

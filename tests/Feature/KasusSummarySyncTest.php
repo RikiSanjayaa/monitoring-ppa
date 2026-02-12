@@ -136,11 +136,15 @@ class KasusSummarySyncTest extends TestCase
             ['nama' => 'Saksi 2'],
         ]);
 
-        $this->createKasus($satker, $perkaraKtp, [
+        $kasusKtp2 = $this->createKasus($satker, $perkaraKtp, [
             'dokumen_status' => DokumenStatus::Sidik->value,
             'penyelesaian_id' => $pelimpahan->id,
-            'nama_korban' => 'Fallback Korban',
-            'nama_pelaku' => 'Fallback Pelaku',
+        ]);
+        $kasusKtp2->korbans()->createMany([
+            ['nama' => 'Korban Tambahan'],
+        ]);
+        $kasusKtp2->tersangkas()->createMany([
+            ['nama' => 'Tersangka Tambahan'],
         ]);
 
         $kasusKta1 = $this->createKasus($satker, $perkaraKta, [
@@ -217,11 +221,9 @@ class KasusSummarySyncTest extends TestCase
             'satker_id' => $satker->id,
             'nomor_lp' => sprintf('LP/%s/%03d/2026', $satker->kode, $this->lpCounter++),
             'tanggal_lp' => now()->toDateString(),
-            'nama_korban' => 'Korban Default',
             'perkara_id' => $perkara->id,
             'dokumen_status' => DokumenStatus::Lidik->value,
             'penyelesaian_id' => null,
-            'nama_pelaku' => null,
         ], $overrides));
     }
 }

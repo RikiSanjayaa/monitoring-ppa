@@ -111,15 +111,7 @@ class KasusRecapSummary
      */
     private static function totalKorban(Collection $records): int
     {
-        return $records->sum(function (Kasus $kasus): int {
-            $relationCount = $kasus->korbans->count();
-
-            if ($relationCount > 0) {
-                return $relationCount;
-            }
-
-            return $kasus->nama_korban !== null && $kasus->nama_korban !== '' ? 1 : 0;
-        });
+        return $records->sum(fn (Kasus $kasus): int => $kasus->korbans->count());
     }
 
     /**
@@ -127,14 +119,6 @@ class KasusRecapSummary
      */
     private static function totalTersangka(Collection $records): int
     {
-        return $records->sum(function (Kasus $kasus): int {
-            $relationCount = $kasus->tersangkas->count();
-
-            if ($relationCount > 0) {
-                return $relationCount;
-            }
-
-            return $kasus->nama_pelaku !== null && $kasus->nama_pelaku !== '' ? 1 : 0;
-        });
+        return $records->sum(fn (Kasus $kasus): int => $kasus->tersangkas->count());
     }
 }

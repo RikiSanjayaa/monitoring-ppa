@@ -190,8 +190,8 @@
                         <td class="small">{{ $record->nomor_lp }}<br>{{ $record->tanggal_lp?->format('d-m-Y') }}</td>
                         <td>{{ $record->kronologi_kejadian ?: '-' }}</td>
                         <td>{{ $record->tindak_pidana_pasal ?: '-' }}</td>
-                        <td>{{ $korbanText !== '' ? $korbanText : ($record->nama_korban ?: '-') }}</td>
-                        <td>{{ $tersangkaText !== '' ? $tersangkaText : ($record->nama_pelaku ?: '-') }}</td>
+                        <td>{{ $korbanText !== '' ? $korbanText : '-' }}</td>
+                        <td>{{ $tersangkaText !== '' ? $tersangkaText : '-' }}</td>
                         <td>{{ $record->hubungan_pelaku_dengan_korban ?: '-' }}</td>
                         <td class="center">{{ $record->dokumen_status?->value === 'lidik' ? '1' : '' }}</td>
                         <td class="center">{{ $record->dokumen_status?->value === 'sidik' ? '1' : '' }}</td>

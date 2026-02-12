@@ -5,206 +5,382 @@ namespace App\Support;
 use App\Models\Kasus;
 use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
-use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class KasusTemplateSpreadsheet
 {
-    private const TEMPLATE_PATH = 'doc_template/DATA KTP, KTA & ABH JANUARI 2026 7.xlsx';
-
-    /**
-     * @param  Collection<int, Kasus>  $records
-     */
     public static function build(Collection $records, ?int $satkerId = null, ?int $userId = null): Spreadsheet
     {
-        $spreadsheet = IOFactory::load(public_path(self::TEMPLATE_PATH));
-        $sheet = $spreadsheet->getSheetByName('KTP TAHUN 2026') ?? $spreadsheet->getActiveSheet();
+        $spreadsheet = new Spreadsheet;
+        $recapData = KasusRecapSummary::fromCollection($records);
+        $penyelesaianColumns = $recapData['penyelesaian_columns'];
+        $recordsByJenis = $records->groupBy(fn (Kasus $record): string => $record->perkara?->nama ?? 'Lainnya');
 
-        self::applyTemplateOverrides($sheet, $records, $satkerId, $userId);
-        self::fillDetailTable($sheet, $records);
-        self::fillRecapTable($sheet, $records);
+        $usedSheetTitles = [];
+        $sheetIndex = 0;
+
+        if ($recordsByJenis->isEmpty()) {
+            $sheet = $spreadsheet->getActiveSheet();
+            $sheet->setTitle(self::nextSheetTitle('Detail', $usedSheetTitles));
+            self::fillDetailSheet($sheet, collect(), 'Tidak Ada Data', $penyelesaianColumns, $satkerId, $userId);
+            $sheetIndex++;
+        } else {
+            foreach ($recordsByJenis as $jenisKasus => $groupedRecords) {
+                $sheet = $sheetIndex === 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
+                $sheet->setTitle(self::nextSheetTitle((string) $jenisKasus, $usedSheetTitles));
+                self::fillDetailSheet($sheet, $groupedRecords, (string) $jenisKasus, $penyelesaianColumns, $satkerId, $userId);
+                $sheetIndex++;
+            }
+        }
+
+        $recapSheet = $spreadsheet->createSheet();
+        $recapSheet->setTitle(self::nextSheetTitle('Rekap', $usedSheetTitles));
+        self::fillRecapSheet($recapSheet, $records, $recapData, $satkerId, $userId);
+
+        $spreadsheet->setActiveSheetIndex(0);
 
         return $spreadsheet;
     }
 
-    /**
-     * @param  Collection<int, Kasus>  $records
-     */
-    private static function fillDetailTable(Worksheet $sheet, Collection $records): void
-    {
-        $dataStartRow = 11;
-        $section2TitleRow = 22;
-        $templateCapacity = $section2TitleRow - $dataStartRow;
-        $recordCount = $records->count();
-        $extraRows = max(0, $recordCount - $templateCapacity);
+    private static function fillDetailSheet(
+        Worksheet $sheet,
+        Collection $records,
+        string $jenisKasus,
+        Collection $penyelesaianColumns,
+        ?int $satkerId,
+        ?int $userId,
+    ): void {
+        self::fillKopAndTitle($sheet, $records, $satkerId, $userId, false);
+        $sheet->setCellValue('A6', 'JENIS KASUS: '.strtoupper($jenisKasus));
 
-        if ($extraRows > 0) {
-            $sheet->insertNewRowBefore($section2TitleRow, $extraRows);
-            for ($i = 0; $i < $extraRows; $i++) {
-                $sourceRow = $section2TitleRow - 1;
-                $targetRow = $sourceRow + $i + 1;
-                $sheet->duplicateStyle($sheet->getStyle("A{$sourceRow}:O{$sourceRow}"), "A{$targetRow}:O{$targetRow}");
-            }
+        $headerRow = 8;
+        $dataStartRow = 9;
+
+        $staticHeaders = [
+            1 => 'NO',
+            2 => 'SATUAN',
+            3 => 'LAPORAN POLISI/TGL',
+            4 => 'KRONOLOGIS KEJADIAN',
+            5 => 'TINDAK PIDANA/PASAL',
+            6 => 'KORBAN',
+            7 => 'TERSANGKA',
+            8 => 'HUB. TERSANGKA DENGAN KORBAN',
+            9 => 'LIDIK',
+            10 => 'SIDIK',
+        ];
+
+        foreach ($staticHeaders as $columnIndex => $label) {
+            self::setCell($sheet, $columnIndex, $headerRow, $label);
         }
+
+        $currentColumn = 11;
+        foreach ($penyelesaianColumns as $column) {
+            self::setCell($sheet, $currentColumn, $headerRow, strtoupper((string) $column['label']));
+            $currentColumn++;
+        }
+
+        self::setCell($sheet, $currentColumn, $headerRow, 'KET');
 
         $row = $dataStartRow;
         foreach ($records as $index => $record) {
-            $penyelesaian = strtolower((string) ($record->penyelesaian?->nama ?? ''));
             $korban = $record->korbans->pluck('nama')->join(', ');
             $tersangka = $record->tersangkas->pluck('nama')->join(', ');
 
-            $sheet->setCellValue("A{$row}", $index + 1);
-            $sheet->setCellValue("B{$row}", $record->satker?->nama ?? '-');
-            $sheet->setCellValue("C{$row}", trim(($record->nomor_lp ?? '-')."\n".($record->tanggal_lp?->format('d-m-Y') ?? '-')));
-            $sheet->setCellValue("D{$row}", $record->kronologi_kejadian ?: '-');
-            $sheet->setCellValue("E{$row}", $record->tindak_pidana_pasal ?: '-');
-            $sheet->setCellValue("F{$row}", $korban !== '' ? $korban : ($record->nama_korban ?: '-'));
-            $sheet->setCellValue("G{$row}", $tersangka !== '' ? $tersangka : ($record->nama_pelaku ?: '-'));
-            $sheet->setCellValue("H{$row}", $record->hubungan_pelaku_dengan_korban ?: '-');
-            $sheet->setCellValue("I{$row}", $record->dokumen_status?->value === 'lidik' ? '1' : '');
-            $sheet->setCellValue("J{$row}", str_contains($penyelesaian, 'henti') ? '1' : '');
-            $sheet->setCellValue("K{$row}", $record->dokumen_status?->value === 'sidik' ? '1' : '');
-            $sheet->setCellValue("L{$row}", str_contains($penyelesaian, 'sp3') ? '1' : '');
-            $sheet->setCellValue("M{$row}", str_contains($penyelesaian, 'p21') ? '1' : '');
-            $sheet->setCellValue("N{$row}", str_contains($penyelesaian, 'vonis') ? '1' : '');
-            $sheet->setCellValue("O{$row}", $record->saksis->pluck('nama')->join(', '));
+            self::setCell($sheet, 1, $row, $index + 1);
+            self::setCell($sheet, 2, $row, $record->satker?->nama ?? '-');
+            self::setCell($sheet, 3, $row, trim(($record->nomor_lp ?? '-')."\n".($record->tanggal_lp?->format('d-m-Y') ?? '-')));
+            self::setCell($sheet, 4, $row, $record->kronologi_kejadian ?: '-');
+            self::setCell($sheet, 5, $row, $record->tindak_pidana_pasal ?: '-');
+            self::setCell($sheet, 6, $row, $korban !== '' ? $korban : '-');
+            self::setCell($sheet, 7, $row, $tersangka !== '' ? $tersangka : '-');
+            self::setCell($sheet, 8, $row, $record->hubungan_pelaku_dengan_korban ?: '-');
+            self::setCell($sheet, 9, $row, $record->dokumen_status?->value === 'lidik' ? 1 : '');
+            self::setCell($sheet, 10, $row, $record->dokumen_status?->value === 'sidik' ? 1 : '');
+
+            $penyelesaianColumnIndex = 11;
+            foreach ($penyelesaianColumns as $column) {
+                self::setCell(
+                    $sheet,
+                    $penyelesaianColumnIndex,
+                    $row,
+                    (int) ($record->penyelesaian_id ?? 0) === (int) $column['id'] ? 1 : '',
+                );
+                $penyelesaianColumnIndex++;
+            }
+
+            self::setCell($sheet, $penyelesaianColumnIndex, $row, $record->latestRtl?->keterangan ?? '-');
             $row++;
         }
 
-        $maxRow = $dataStartRow + $templateCapacity - 1 + $extraRows;
-        for ($clearRow = $row; $clearRow <= $maxRow; $clearRow++) {
-            foreach (range('A', 'O') as $column) {
-                $sheet->setCellValue("{$column}{$clearRow}", '');
-            }
-        }
+        $lastColumnIndex = $currentColumn;
+        self::applyBasicTableStyle($sheet, $headerRow, max($dataStartRow, $row - 1), $lastColumnIndex, true);
+        self::fillSignature($sheet, $satkerId, $userId, $row + 2, $lastColumnIndex);
     }
 
-    /**
-     * @param  Collection<int, Kasus>  $records
-     */
-    private static function fillRecapTable(Worksheet $sheet, Collection $records): void
-    {
-        $totalRow = self::findRowByValue($sheet, 'B', 'JUMLAH TOTAL') ?? 31;
-        $dataStartRow = $totalRow - 5;
-        $templateCapacity = 5;
+    private static function fillRecapSheet(
+        Worksheet $sheet,
+        Collection $records,
+        array $recapData,
+        ?int $satkerId,
+        ?int $userId,
+    ): void {
+        self::fillKopAndTitle($sheet, $records, $satkerId, $userId, true);
 
-        $groups = $records
-            ->groupBy(fn (Kasus $record): string => $record->perkara?->nama ?? 'Lainnya')
-            ->map(function (Collection $items, string $jenis): array {
-                $first = $items->first();
+        $headerRow = 8;
+        $dataStartRow = 9;
+        $penyelesaianColumns = $recapData['penyelesaian_columns'];
 
-                return [
-                    'jenis' => $jenis,
-                    'pasal' => $first?->tindak_pidana_pasal ?: '-',
-                    'jumlah_korban' => $items->sum(function (Kasus $k): int {
-                        $count = $k->korbans->count();
+        $headers = [
+            'NO',
+            'JENIS TP',
+            'TP/PASAL',
+            'KORBAN',
+            'TERSANGKA',
+            'SAKSI',
+            'LIDIK',
+            'SIDIK',
+        ];
 
-                        return $count > 0 ? $count : ($k->nama_korban ? 1 : 0);
-                    }),
-                    'jumlah_tersangka' => $items->sum(function (Kasus $k): int {
-                        $count = $k->tersangkas->count();
+        foreach ($penyelesaianColumns as $column) {
+            $headers[] = strtoupper((string) $column['label']);
+        }
 
-                        return $count > 0 ? $count : ($k->nama_pelaku ? 1 : 0);
-                    }),
-                    'jumlah_saksi' => $items->sum(fn (Kasus $k): int => $k->saksis->count()),
-                    'lidik' => $items->where('dokumen_status.value', 'lidik')->count(),
-                    'henti_lidik' => $items->filter(fn (Kasus $k): bool => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'henti'))->count(),
-                    'sidik' => $items->where('dokumen_status.value', 'sidik')->count(),
-                    'sp3' => $items->filter(fn (Kasus $k): bool => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'sp3'))->count(),
-                    'p21' => $items->filter(fn (Kasus $k): bool => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'p21'))->count(),
-                    'dicabut' => $items->filter(fn (Kasus $k): bool => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'cabut'))->count(),
-                    'limpah' => $items->filter(fn (Kasus $k): bool => str_contains(strtolower((string) ($k->penyelesaian?->nama ?? '')), 'limpah'))->count(),
-                ];
-            })
-            ->values();
+        $headers[] = 'JML';
+        $headers[] = 'KET';
 
-        $extraRows = max(0, $groups->count() - $templateCapacity);
-        if ($extraRows > 0) {
-            $sheet->insertNewRowBefore($totalRow, $extraRows);
-            for ($i = 0; $i < $extraRows; $i++) {
-                $sourceRow = $totalRow - 1;
-                $targetRow = $sourceRow + $i + 1;
-                $sheet->duplicateStyle($sheet->getStyle("A{$sourceRow}:O{$sourceRow}"), "A{$targetRow}:O{$targetRow}");
-            }
-            $totalRow += $extraRows;
+        foreach ($headers as $index => $header) {
+            self::setCell($sheet, $index + 1, $headerRow, $header);
         }
 
         $row = $dataStartRow;
-        foreach ($groups as $index => $group) {
-            $sheet->setCellValue("A{$row}", $index + 1);
-            $sheet->setCellValue("B{$row}", $group['jenis']);
-            $sheet->setCellValue("C{$row}", $group['pasal']);
-            $sheet->setCellValue("D{$row}", $group['jumlah_korban']);
-            $sheet->setCellValue("E{$row}", $group['jumlah_tersangka']);
-            $sheet->setCellValue("F{$row}", $group['jumlah_saksi']);
-            $sheet->setCellValue("G{$row}", $group['lidik']);
-            $sheet->setCellValue("H{$row}", $group['henti_lidik']);
-            $sheet->setCellValue("I{$row}", $group['sidik']);
-            $sheet->setCellValue("J{$row}", $group['sp3']);
-            $sheet->setCellValue("K{$row}", $group['p21']);
-            $sheet->setCellValue("L{$row}", $group['dicabut']);
-            $sheet->setCellValue("M{$row}", $group['limpah']);
-            $sheet->setCellValue("N{$row}", $group['lidik'] + $group['henti_lidik'] + $group['sidik'] + $group['sp3'] + $group['p21'] + $group['dicabut'] + $group['limpah']);
-            $sheet->setCellValue("O{$row}", '');
+        foreach ($recapData['rows'] as $index => $group) {
+            self::setCell($sheet, 1, $row, $index + 1);
+            self::setCell($sheet, 2, $row, $group['jenis']);
+            self::setCell($sheet, 3, $row, $group['pasal']);
+            self::setCell($sheet, 4, $row, $group['jumlah_korban']);
+            self::setCell($sheet, 5, $row, $group['jumlah_tersangka']);
+            self::setCell($sheet, 6, $row, $group['jumlah_saksi']);
+            self::setCell($sheet, 7, $row, $group['lidik']);
+            self::setCell($sheet, 8, $row, $group['sidik']);
+
+            $penyelesaianColumnIndex = 9;
+            foreach ($penyelesaianColumns as $column) {
+                self::setCell(
+                    $sheet,
+                    $penyelesaianColumnIndex,
+                    $row,
+                    (int) ($group['penyelesaian_counts'][$column['key']] ?? 0),
+                );
+                $penyelesaianColumnIndex++;
+            }
+
+            self::setCell($sheet, $penyelesaianColumnIndex, $row, $group['jumlah']);
+            self::setCell($sheet, $penyelesaianColumnIndex + 1, $row, '');
             $row++;
         }
 
-        $maxRow = $dataStartRow + $templateCapacity - 1 + $extraRows;
-        for ($clearRow = $row; $clearRow <= $maxRow; $clearRow++) {
-            foreach (range('A', 'O') as $column) {
-                $sheet->setCellValue("{$column}{$clearRow}", '');
-            }
+        $totalRow = $row;
+        self::setCell($sheet, 2, $totalRow, 'JUMLAH TOTAL');
+
+        $totals = $recapData['totals'];
+        self::setCell($sheet, 4, $totalRow, $totals['jumlah_korban']);
+        self::setCell($sheet, 5, $totalRow, $totals['jumlah_tersangka']);
+        self::setCell($sheet, 6, $totalRow, $totals['jumlah_saksi']);
+        self::setCell($sheet, 7, $totalRow, $totals['lidik']);
+        self::setCell($sheet, 8, $totalRow, $totals['sidik']);
+
+        $penyelesaianColumnIndex = 9;
+        foreach ($penyelesaianColumns as $column) {
+            self::setCell(
+                $sheet,
+                $penyelesaianColumnIndex,
+                $totalRow,
+                (int) ($totals['penyelesaian_counts'][$column['key']] ?? 0),
+            );
+            $penyelesaianColumnIndex++;
         }
 
-        $sheet->setCellValue("D{$totalRow}", $groups->sum('jumlah_korban'));
-        $sheet->setCellValue("E{$totalRow}", $groups->sum('jumlah_tersangka'));
-        $sheet->setCellValue("F{$totalRow}", $groups->sum('jumlah_saksi'));
-        $sheet->setCellValue("G{$totalRow}", $groups->sum('lidik'));
-        $sheet->setCellValue("H{$totalRow}", $groups->sum('henti_lidik'));
-        $sheet->setCellValue("I{$totalRow}", $groups->sum('sidik'));
-        $sheet->setCellValue("J{$totalRow}", $groups->sum('sp3'));
-        $sheet->setCellValue("K{$totalRow}", $groups->sum('p21'));
-        $sheet->setCellValue("L{$totalRow}", $groups->sum('dicabut'));
-        $sheet->setCellValue("M{$totalRow}", $groups->sum('limpah'));
-        $sheet->setCellValue("N{$totalRow}", $groups->sum(fn (array $group): int => $group['lidik'] + $group['henti_lidik'] + $group['sidik'] + $group['sp3'] + $group['p21'] + $group['dicabut'] + $group['limpah']));
-        $sheet->setCellValue("O{$totalRow}", '');
+        self::setCell($sheet, $penyelesaianColumnIndex, $totalRow, $totals['jumlah']);
+        self::setCell($sheet, $penyelesaianColumnIndex + 1, $totalRow, '');
+
+        $lastColumnIndex = $penyelesaianColumnIndex + 1;
+        self::applyBasicTableStyle($sheet, $headerRow, $totalRow, $lastColumnIndex, false);
+        self::fillSignature($sheet, $satkerId, $userId, $totalRow + 2, $lastColumnIndex);
     }
 
-    /**
-     * @param  Collection<int, Kasus>  $records
-     */
-    private static function applyTemplateOverrides(Worksheet $sheet, Collection $records, ?int $satkerId, ?int $userId): void
-    {
+    private static function fillKopAndTitle(
+        Worksheet $sheet,
+        Collection $records,
+        ?int $satkerId,
+        ?int $userId,
+        bool $useRecapTitle,
+    ): void {
         $kop = ExportDocumentTemplate::kopSuratLines($userId, $satkerId);
         $titles = ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId);
 
         $sheet->setCellValue('A1', $kop[0] ?? '');
         $sheet->setCellValue('A2', $kop[1] ?? '');
         $sheet->setCellValue('A3', $kop[2] ?? '');
-
-        $sheet->setCellValue('A5', $titles['main']);
-        $sheet->setCellValue('A22', $titles['recap']);
-
-        $signature = ExportDocumentTemplate::signatureBlock($userId, $satkerId);
-        $sheet->setCellValue('I33', $signature['line1']);
-        $sheet->setCellValue('I34', $signature['line2']);
-        $sheet->setCellValue('G38', $signature['name']);
-        $sheet->setCellValue('G39', $signature['rank']);
+        $sheet->setCellValue('A5', $useRecapTitle ? $titles['recap'] : $titles['main']);
     }
 
-    private static function findRowByValue(Worksheet $sheet, string $column, string $needle): ?int
-    {
-        $highestRow = $sheet->getHighestDataRow();
-        $columnIndex = Coordinate::columnIndexFromString($column);
+    private static function fillSignature(
+        Worksheet $sheet,
+        ?int $satkerId,
+        ?int $userId,
+        int $startRow,
+        int $lastColumnIndex,
+    ): void {
+        $signature = ExportDocumentTemplate::signatureBlock($userId, $satkerId);
+        $signatureStartColumn = max(1, $lastColumnIndex - 4);
 
-        for ($row = 1; $row <= $highestRow; $row++) {
-            $value = strtoupper(trim((string) $sheet->getCellByColumnAndRow($columnIndex, $row)->getValue()));
-            if ($value === strtoupper($needle)) {
-                return $row;
-            }
+        self::setCell($sheet, $signatureStartColumn, $startRow, $signature['line1']);
+        self::setCell($sheet, $signatureStartColumn, $startRow + 1, $signature['line2']);
+        self::setCell($sheet, $signatureStartColumn, $startRow + 4, $signature['name']);
+        self::setCell($sheet, $signatureStartColumn, $startRow + 5, $signature['rank']);
+    }
+
+    private static function applyBasicTableStyle(
+        Worksheet $sheet,
+        int $headerRow,
+        int $lastDataRow,
+        int $lastColumnIndex,
+        bool $isDetailSheet,
+    ): void {
+        $lastColumn = Coordinate::stringFromColumnIndex($lastColumnIndex);
+        $tableRange = "A{$headerRow}:{$lastColumn}{$lastDataRow}";
+        $headerRange = "A{$headerRow}:{$lastColumn}{$headerRow}";
+
+        $sheet->freezePane('A'.($headerRow + 1));
+
+        $sheet->getStyle($tableRange)->applyFromArray([
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['argb' => 'FF1F2937'],
+                ],
+            ],
+        ]);
+
+        $sheet->getStyle($headerRange)->getFont()->setBold(true);
+        $sheet->getStyle($headerRange)
+            ->getFill()
+            ->setFillType(Fill::FILL_SOLID)
+            ->getStartColor()
+            ->setARGB('FFE5E7EB');
+        $sheet->getStyle($headerRange)
+            ->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+            ->setVertical(Alignment::VERTICAL_CENTER);
+
+        $sheet->getStyle($tableRange)->getAlignment()->setWrapText(true);
+        $sheet->getStyle($tableRange)
+            ->getAlignment()
+            ->setVertical(Alignment::VERTICAL_TOP);
+
+        $sheet->getStyle("A{$headerRow}:A{$lastDataRow}")
+            ->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $sheet->getStyle("I{$headerRow}:{$lastColumn}{$lastDataRow}")
+            ->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        $widths = $isDetailSheet
+            ? self::detailColumnWidths($lastColumnIndex)
+            : self::recapColumnWidths($lastColumnIndex);
+
+        foreach ($widths as $columnIndex => $width) {
+            $columnLetter = Coordinate::stringFromColumnIndex($columnIndex);
+            $sheet->getColumnDimension($columnLetter)->setAutoSize(false);
+            $sheet->getColumnDimension($columnLetter)->setWidth($width);
         }
 
-        return null;
+        $sheet->getRowDimension($headerRow)->setRowHeight(24);
+    }
+
+    private static function detailColumnWidths(int $lastColumnIndex): array
+    {
+        $widths = [
+            1 => 6,
+            2 => 20,
+            3 => 24,
+            4 => 38,
+            5 => 30,
+            6 => 24,
+            7 => 24,
+            8 => 22,
+            9 => 8,
+            10 => 8,
+        ];
+
+        for ($column = 11; $column < $lastColumnIndex; $column++) {
+            $widths[$column] = 10;
+        }
+
+        $widths[$lastColumnIndex] = 42;
+
+        return $widths;
+    }
+
+    private static function recapColumnWidths(int $lastColumnIndex): array
+    {
+        $widths = [
+            1 => 6,
+            2 => 32,
+            3 => 28,
+            4 => 10,
+            5 => 12,
+            6 => 10,
+            7 => 8,
+            8 => 8,
+        ];
+
+        for ($column = 9; $column < $lastColumnIndex; $column++) {
+            $widths[$column] = 10;
+        }
+
+        $widths[$lastColumnIndex] = 22;
+
+        return $widths;
+    }
+
+    private static function setCell(Worksheet $sheet, int $columnIndex, int $row, mixed $value): void
+    {
+        $sheet->setCellValue(Coordinate::stringFromColumnIndex($columnIndex).$row, $value);
+    }
+
+    private static function nextSheetTitle(string $baseTitle, array &$usedTitles): string
+    {
+        $normalized = self::normalizeSheetTitle($baseTitle);
+        $candidate = $normalized;
+        $counter = 2;
+
+        while (in_array($candidate, $usedTitles, true)) {
+            $suffix = ' '.$counter;
+            $maxBaseLength = 31 - strlen($suffix);
+            $candidate = substr($normalized, 0, $maxBaseLength).$suffix;
+            $counter++;
+        }
+
+        $usedTitles[] = $candidate;
+
+        return $candidate;
+    }
+
+    private static function normalizeSheetTitle(string $title): string
+    {
+        $value = preg_replace('#[\\/*?:\[\]]+#', '', $title);
+        $value = trim((string) $value);
+
+        if ($value === '') {
+            return 'Sheet';
+        }
+
+        return substr($value, 0, 31);
     }
 }

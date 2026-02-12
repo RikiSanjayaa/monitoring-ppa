@@ -43,7 +43,7 @@ class StatsOverviewWidget extends BaseWidget
 
         $stats = [
             Stat::make('Total Kasus', (string) $totalKasus)
-                ->description('Setelah filter dashboard')
+                ->description('total keseluruhan')
                 ->descriptionIcon('heroicon-m-document-text')
                 ->chart([
                     (int) round($totalKasus * 0.68),

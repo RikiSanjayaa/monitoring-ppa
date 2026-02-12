@@ -26,11 +26,6 @@ class Kasus extends Model
         'satker_id',
         'nomor_lp',
         'tanggal_lp',
-        'nama_korban',
-        'tempat_lahir_korban',
-        'tanggal_lahir_korban',
-        'alamat_korban',
-        'hp_korban',
         'perkara_id',
         'dokumen_status',
         'kronologi_kejadian',
@@ -40,11 +35,6 @@ class Kasus extends Model
         'tindak_pidana_pasal',
         'hubungan_pelaku_dengan_korban',
         'proses_pidana',
-        'nama_pelaku',
-        'tempat_lahir_pelaku',
-        'tanggal_lahir_pelaku',
-        'alamat_pelaku',
-        'hp_pelaku',
         'penyelesaian_id',
         'created_by',
     ];
@@ -56,8 +46,6 @@ class Kasus extends Model
     {
         return [
             'tanggal_lp' => 'date',
-            'tanggal_lahir_korban' => 'date',
-            'tanggal_lahir_pelaku' => 'date',
             'dokumen_status' => DokumenStatus::class,
         ];
     }
@@ -159,7 +147,7 @@ class Kasus extends Model
             return $names->join(', ');
         }
 
-        return (string) ($this->nama_korban ?: '-');
+        return '-';
     }
 
     public function tersangkaList(): string
@@ -170,7 +158,7 @@ class Kasus extends Model
             return $names->join(', ');
         }
 
-        return (string) ($this->nama_pelaku ?: '-');
+        return '-';
     }
 
     public function pelakuList(): string
