@@ -71,6 +71,7 @@ class ListKasuses extends ListRecords
                             'korbans:id,kasus_id,nama',
                             'tersangkas:id,kasus_id,nama',
                             'saksis:id,kasus_id,nama',
+                            'latestRtl',
                         ])
                         ->get();
 

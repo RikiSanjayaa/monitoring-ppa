@@ -183,7 +183,7 @@
                         <td class="center">{{ str_contains($status, 'sp3') ? '1' : '' }}</td>
                         <td class="center">{{ str_contains($status, 'p21') ? '1' : '' }}</td>
                         <td class="center"></td>
-                        <td class="small">{{ $record->saksis->pluck('nama')->join(', ') }}</td>
+                        <td class="small">{{ $record->latestRtl?->keterangan ?? '-' }}</td>
                     </tr>
                 @endforeach
             </tbody>
