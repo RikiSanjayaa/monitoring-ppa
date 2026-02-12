@@ -5,9 +5,9 @@ namespace Database\Seeders;
 use App\Enums\DokumenStatus;
 use App\Enums\UserRole;
 use App\Models\Kasus;
+use App\Models\Penyelesaian;
 use App\Models\Perkara;
 use App\Models\Petugas;
-use App\Models\Penyelesaian;
 use App\Models\Satker;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -59,6 +59,16 @@ class KasusSeeder extends Seeder
                         'alamat_korban' => sprintf('Alamat korban %s kasus %d', $satker->nama, $index),
                         'hp_korban' => '08122'.str_pad((string) ($satker->id * 10 + $index), 8, '0', STR_PAD_LEFT),
                         'perkara_id' => $perkara?->id,
+                        'tindak_pidana_pasal' => 'Pasal 81 UU Perlindungan Anak',
+                        'hubungan_pelaku_dengan_korban' => $index % 2 === 0 ? 'Keluarga' : 'Tetangga',
+                        'proses_pidana' => $index % 2 === 0 ? 'Penyidikan berjalan' : 'Pelimpahan berkas tahap awal',
+                        'kronologi_kejadian' => sprintf('Kronologi kejadian kasus %s nomor %d.', $satker->kode, $index),
+                        'laporan_polisi' => sprintf('Uraian laporan polisi kasus %s nomor %d.', $satker->kode, $index),
+                        'nama_pelaku' => sprintf('Tersangka %s %d', $satker->kode, $index),
+                        'tempat_lahir_pelaku' => 'Mataram',
+                        'tanggal_lahir_pelaku' => Carbon::now()->subYears(30 + $index)->toDateString(),
+                        'alamat_pelaku' => sprintf('Alamat tersangka %s kasus %d', $satker->nama, $index),
+                        'hp_pelaku' => '08211'.str_pad((string) ($satker->id * 10 + $index), 8, '0', STR_PAD_LEFT),
                         'dokumen_status' => $dokumenStatus,
                         'penyelesaian_id' => $penyelesaian?->id,
                         'created_by' => $admin?->id,
@@ -67,6 +77,60 @@ class KasusSeeder extends Seeder
 
                 $assignedPetugas = $petugasIds->slice(0, $index + 1)->values()->all();
                 $kasus->petugas()->sync($assignedPetugas);
+
+                $kasus->korbans()->delete();
+                $kasus->korbans()->createMany([
+                    [
+                        'nama' => sprintf('Korban %s %dA', $satker->kode, $index),
+                        'tempat_lahir' => 'Mataram',
+                        'tanggal_lahir' => Carbon::now()->subYears(20 + $index)->toDateString(),
+                        'alamat' => sprintf('Alamat korban A %s kasus %d', $satker->nama, $index),
+                        'hp' => '08122'.str_pad((string) ($satker->id * 10 + $index), 8, '0', STR_PAD_LEFT),
+                    ],
+                    [
+                        'nama' => sprintf('Korban %s %dB', $satker->kode, $index),
+                        'tempat_lahir' => 'Lombok Tengah',
+                        'tanggal_lahir' => Carbon::now()->subYears(18 + $index)->toDateString(),
+                        'alamat' => sprintf('Alamat korban B %s kasus %d', $satker->nama, $index),
+                        'hp' => '08123'.str_pad((string) ($satker->id * 10 + $index), 8, '0', STR_PAD_LEFT),
+                    ],
+                ]);
+
+                $kasus->tersangkas()->delete();
+                $kasus->tersangkas()->createMany([
+                    [
+                        'nama' => sprintf('Tersangka %s %dA', $satker->kode, $index),
+                        'tempat_lahir' => 'Mataram',
+                        'tanggal_lahir' => Carbon::now()->subYears(30 + $index)->toDateString(),
+                        'alamat' => sprintf('Alamat tersangka A %s kasus %d', $satker->nama, $index),
+                        'hp' => '08211'.str_pad((string) ($satker->id * 10 + $index), 8, '0', STR_PAD_LEFT),
+                    ],
+                    [
+                        'nama' => sprintf('Tersangka %s %dB', $satker->kode, $index),
+                        'tempat_lahir' => 'Lombok Timur',
+                        'tanggal_lahir' => Carbon::now()->subYears(28 + $index)->toDateString(),
+                        'alamat' => sprintf('Alamat tersangka B %s kasus %d', $satker->nama, $index),
+                        'hp' => '08212'.str_pad((string) ($satker->id * 10 + $index), 8, '0', STR_PAD_LEFT),
+                    ],
+                ]);
+
+                $kasus->saksis()->delete();
+                $kasus->saksis()->createMany([
+                    [
+                        'nama' => sprintf('Saksi %s %dA', $satker->kode, $index),
+                        'tempat_lahir' => 'Mataram',
+                        'tanggal_lahir' => Carbon::now()->subYears(25 + $index)->toDateString(),
+                        'alamat' => sprintf('Alamat saksi A %s kasus %d', $satker->nama, $index),
+                        'hp' => '08311'.str_pad((string) ($satker->id * 10 + $index), 8, '0', STR_PAD_LEFT),
+                    ],
+                    [
+                        'nama' => sprintf('Saksi %s %dB', $satker->kode, $index),
+                        'tempat_lahir' => 'Lombok Barat',
+                        'tanggal_lahir' => Carbon::now()->subYears(23 + $index)->toDateString(),
+                        'alamat' => sprintf('Alamat saksi B %s kasus %d', $satker->nama, $index),
+                        'hp' => '08312'.str_pad((string) ($satker->id * 10 + $index), 8, '0', STR_PAD_LEFT),
+                    ],
+                ]);
             }
         });
     }

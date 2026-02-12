@@ -33,6 +33,18 @@ class Kasus extends Model
         'hp_korban',
         'perkara_id',
         'dokumen_status',
+        'kronologi_kejadian',
+        'kronologi_kejadian_file',
+        'laporan_polisi',
+        'laporan_polisi_file',
+        'tindak_pidana_pasal',
+        'hubungan_pelaku_dengan_korban',
+        'proses_pidana',
+        'nama_pelaku',
+        'tempat_lahir_pelaku',
+        'tanggal_lahir_pelaku',
+        'alamat_pelaku',
+        'hp_pelaku',
         'penyelesaian_id',
         'created_by',
     ];
@@ -45,13 +57,14 @@ class Kasus extends Model
         return [
             'tanggal_lp' => 'date',
             'tanggal_lahir_korban' => 'date',
+            'tanggal_lahir_pelaku' => 'date',
             'dokumen_status' => DokumenStatus::class,
         ];
     }
 
     protected static function booted(): void
     {
-        static::addGlobalScope(new SatkerScope());
+        static::addGlobalScope(new SatkerScope);
 
         static::creating(function (Kasus $kasus): void {
             if (! $kasus->created_by && Auth::id()) {
@@ -93,6 +106,29 @@ class Kasus extends Model
             ->orderBy('id', 'desc');
     }
 
+    public function korbans(): HasMany
+    {
+        return $this->hasMany(KasusKorban::class)
+            ->orderBy('id');
+    }
+
+    public function tersangkas(): HasMany
+    {
+        return $this->hasMany(KasusPelaku::class)
+            ->orderBy('id');
+    }
+
+    public function pelakus(): HasMany
+    {
+        return $this->tersangkas();
+    }
+
+    public function saksis(): HasMany
+    {
+        return $this->hasMany(KasusSaksi::class)
+            ->orderBy('id');
+    }
+
     public function latestRtl(): HasOne
     {
         return $this->hasOne(Rtl::class)->latestOfMany('tanggal');
@@ -105,5 +141,32 @@ class Kasus extends Model
         }
 
         return $query->where('satker_id', $satkerId);
+    }
+
+    public function korbanList(): string
+    {
+        $names = $this->korbans->pluck('nama')->filter()->values();
+
+        if ($names->isNotEmpty()) {
+            return $names->join(', ');
+        }
+
+        return (string) ($this->nama_korban ?: '-');
+    }
+
+    public function tersangkaList(): string
+    {
+        $names = $this->tersangkas->pluck('nama')->filter()->values();
+
+        if ($names->isNotEmpty()) {
+            return $names->join(', ');
+        }
+
+        return (string) ($this->nama_pelaku ?: '-');
+    }
+
+    public function pelakuList(): string
+    {
+        return $this->tersangkaList();
     }
 }

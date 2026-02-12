@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             PerkaraSeeder::class,
             PenyelesaianSeeder::class,
             UserSeeder::class,
+            PengaturanLaporanSeeder::class,
             PetugasSeeder::class,
             KasusSeeder::class,
             RtlSeeder::class,

@@ -13,12 +13,13 @@ class PenyelesaianSeeder extends Seeder
     public function run(): void
     {
         $items = [
-            'P21',
+            'Lidik',
             'Henti Lidik',
+            'Sidik',
             'SP3',
-            'Diversi',
-            'RJ',
-            'Limpah',
+            'P21',
+            'Vonis',
+            'Pelimpahan',
         ];
 
         foreach ($items as $nama) {

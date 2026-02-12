@@ -11,17 +11,16 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 
-class LaporanExport implements FromCollection, WithHeadings, WithMapping, ShouldAutoSize
+class LaporanExport implements FromCollection, ShouldAutoSize, WithHeadings, WithMapping
 {
     use Exportable;
 
     /**
-     * @param Collection<int, array<string, int|string>> $summary
+     * @param  Collection<int, array<string, int|string>>  $summary
      */
     public function __construct(
         private readonly Collection $summary,
-    ) {
-    }
+    ) {}
 
     public static function fromQuery(Builder $query): self
     {
@@ -56,7 +55,7 @@ class LaporanExport implements FromCollection, WithHeadings, WithMapping, Should
     }
 
     /**
-     * @param array<string, int|string> $row
+     * @param  array<string, int|string>  $row
      * @return array<int, int|string>
      */
     public function map($row): array

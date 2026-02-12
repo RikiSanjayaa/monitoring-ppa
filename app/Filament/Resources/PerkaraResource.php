@@ -23,9 +23,9 @@ class PerkaraResource extends Resource
 
     protected static ?string $slug = 'perkara';
 
-    protected static ?string $modelLabel = 'Perkara';
+    protected static ?string $modelLabel = 'Jenis Kasus';
 
-    protected static ?string $pluralModelLabel = 'Perkara';
+    protected static ?string $pluralModelLabel = 'Jenis Kasus';
 
     public static function canAccess(): bool
     {

@@ -23,7 +23,7 @@ class KasusSummary
     }
 
     /**
-     * @param Collection<int, Kasus> $records
+     * @param  Collection<int, Kasus>  $records
      * @return Collection<int, array<string, int|string>>
      */
     public static function fromCollection(Collection $records): Collection
@@ -64,7 +64,7 @@ class KasusSummary
     }
 
     /**
-     * @param Collection<int, Kasus> $items
+     * @param  Collection<int, Kasus>  $items
      */
     private static function countByPenyelesaian(Collection $items, string $value): int
     {

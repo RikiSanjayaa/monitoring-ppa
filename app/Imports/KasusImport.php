@@ -4,9 +4,9 @@ namespace App\Imports;
 
 use App\Enums\DokumenStatus;
 use App\Models\Kasus;
+use App\Models\Penyelesaian;
 use App\Models\Perkara;
 use App\Models\Petugas;
-use App\Models\Penyelesaian;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
@@ -14,13 +14,12 @@ use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
-class KasusImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
+class KasusImport implements SkipsEmptyRows, ToCollection, WithHeadingRow
 {
     public function __construct(
         private readonly int $satkerId,
         private readonly int $createdBy,
-    ) {
-    }
+    ) {}
 
     public function collection(Collection $rows): void
     {
@@ -39,7 +38,7 @@ class KasusImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 continue;
             }
 
-            $perkaraNama = (string) $this->value($raw, ['perkara']);
+            $perkaraNama = (string) $this->value($raw, ['jenis_kasus', 'jenis kasus', 'perkara']);
             $perkara = Perkara::query()->firstOrCreate(
                 ['nama' => $perkaraNama !== '' ? $perkaraNama : 'Lainnya'],
                 ['is_active' => true],
@@ -61,6 +60,25 @@ class KasusImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 $this->parseDate($this->value($raw, ['tanggal_lahir_korban', 'tanggal lahir', 'tgl_lahir'])),
             );
 
+            $korbanNames = $this->parseList((string) $this->value($raw, ['daftar_korban', 'daftar korban']));
+            if ($korbanNames === []) {
+                $singleKorban = trim((string) $this->value($raw, ['nama_korban', 'korban']));
+                if ($singleKorban !== '') {
+                    $korbanNames = [$singleKorban];
+                }
+            }
+
+            $tersangkaNames = $this->parseList((string) $this->value($raw, ['daftar_tersangka', 'daftar tersangka', 'daftar_pelaku', 'daftar pelaku']));
+            if ($tersangkaNames === []) {
+                $singleTersangka = trim((string) $this->value($raw, ['nama_tersangka', 'nama tersangka', 'nama_pelaku', 'nama pelaku']));
+                if ($singleTersangka !== '') {
+                    $tersangkaNames = [$singleTersangka];
+                }
+            }
+
+            $namaKorbanUtama = $korbanNames[0] ?? '-';
+            $namaTersangkaUtama = $tersangkaNames[0] ?? null;
+
             $kasus = Kasus::withoutGlobalScopes()->updateOrCreate(
                 [
                     'satker_id' => $this->satkerId,
@@ -68,12 +86,22 @@ class KasusImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
                 ],
                 [
                     'tanggal_lp' => $tanggalLp,
-                    'nama_korban' => (string) $this->value($raw, ['nama_korban', 'korban']) ?: '-',
+                    'nama_korban' => $namaKorbanUtama,
                     'tempat_lahir_korban' => $tempatLahir,
                     'tanggal_lahir_korban' => $tanggalLahir,
                     'alamat_korban' => (string) $this->value($raw, ['alamat_korban', 'alamat']),
                     'hp_korban' => (string) $this->value($raw, ['hp_korban', 'no_hp_korban', 'no hp', 'hp']),
                     'perkara_id' => $perkara->id,
+                    'tindak_pidana_pasal' => (string) $this->value($raw, ['tindak_pidana_pasal', 'tindak pidana/pasal', 'pasal']),
+                    'hubungan_pelaku_dengan_korban' => (string) $this->value($raw, ['hubungan_tersangka_dengan_korban', 'hubungan tersangka dengan korban', 'hubungan_pelaku_dengan_korban', 'hubungan pelaku dengan korban']),
+                    'proses_pidana' => (string) $this->value($raw, ['proses_pidana', 'proses pidana']),
+                    'kronologi_kejadian' => (string) $this->value($raw, ['kronologi_kejadian', 'kronologi kejadian']),
+                    'laporan_polisi' => (string) $this->value($raw, ['laporan_polisi', 'laporan polisi']),
+                    'nama_pelaku' => $namaTersangkaUtama,
+                    'tempat_lahir_pelaku' => (string) $this->value($raw, ['tempat_lahir_tersangka', 'tempat lahir tersangka', 'tempat_lahir_pelaku', 'tempat lahir pelaku']),
+                    'tanggal_lahir_pelaku' => $this->parseDate($this->value($raw, ['tanggal_lahir_tersangka', 'tanggal lahir tersangka', 'tanggal_lahir_pelaku', 'tanggal lahir pelaku'])),
+                    'alamat_pelaku' => (string) $this->value($raw, ['alamat_tersangka', 'alamat tersangka', 'alamat_pelaku', 'alamat pelaku']),
+                    'hp_pelaku' => (string) $this->value($raw, ['hp_tersangka', 'hp tersangka', 'no_hp_tersangka', 'no hp tersangka', 'hp_pelaku', 'hp pelaku', 'no_hp_pelaku', 'no hp pelaku']),
                     'dokumen_status' => $dokumenStatus,
                     'penyelesaian_id' => $penyelesaian?->id,
                 ],
@@ -106,6 +134,62 @@ class KasusImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
 
                 $kasus->petugas()->sync($petugasIds);
             }
+
+            $kasus->korbans()->delete();
+            if ($korbanNames !== []) {
+                $kasus->korbans()->createMany(
+                    collect($korbanNames)
+                        ->map(function (string $nama, int $index) use ($tempatLahir, $tanggalLahir, $raw): array {
+                            return [
+                                'nama' => $nama,
+                                'tempat_lahir' => $index === 0 ? $tempatLahir : null,
+                                'tanggal_lahir' => $index === 0 ? $tanggalLahir : null,
+                                'alamat' => $index === 0 ? (string) $this->value($raw, ['alamat_korban', 'alamat']) : null,
+                                'hp' => $index === 0 ? (string) $this->value($raw, ['hp_korban', 'no_hp_korban', 'no hp', 'hp']) : null,
+                            ];
+                        })
+                        ->all(),
+                );
+            }
+
+            $kasus->tersangkas()->delete();
+            if ($tersangkaNames !== []) {
+                $kasus->tersangkas()->createMany(
+                    collect($tersangkaNames)
+                        ->map(function (string $nama, int $index) use ($raw): array {
+                            return [
+                                'nama' => $nama,
+                                'tempat_lahir' => $index === 0 ? (string) $this->value($raw, ['tempat_lahir_tersangka', 'tempat lahir tersangka', 'tempat_lahir_pelaku', 'tempat lahir pelaku']) : null,
+                                'tanggal_lahir' => $index === 0 ? $this->parseDate($this->value($raw, ['tanggal_lahir_tersangka', 'tanggal lahir tersangka', 'tanggal_lahir_pelaku', 'tanggal lahir pelaku'])) : null,
+                                'alamat' => $index === 0 ? (string) $this->value($raw, ['alamat_tersangka', 'alamat tersangka', 'alamat_pelaku', 'alamat pelaku']) : null,
+                                'hp' => $index === 0 ? (string) $this->value($raw, ['hp_tersangka', 'hp tersangka', 'no_hp_tersangka', 'no hp tersangka', 'hp_pelaku', 'hp pelaku', 'no_hp_pelaku', 'no hp pelaku']) : null,
+                            ];
+                        })
+                        ->all(),
+                );
+            }
+
+            $saksiNames = $this->parseList((string) $this->value($raw, ['daftar_saksi', 'daftar saksi', 'saksi']));
+
+            if ($saksiNames === []) {
+                $singleSaksi = trim((string) $this->value($raw, ['nama_saksi', 'nama saksi']));
+
+                if ($singleSaksi !== '') {
+                    $saksiNames = [$singleSaksi];
+                }
+            }
+
+            $kasus->saksis()->delete();
+
+            if ($saksiNames !== []) {
+                $kasus->saksis()->createMany(
+                    collect($saksiNames)
+                        ->map(fn (string $nama): array => [
+                            'nama' => $nama,
+                        ])
+                        ->all(),
+                );
+            }
         }
     }
 
@@ -117,8 +201,8 @@ class KasusImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
     }
 
     /**
-     * @param array<string, mixed> $row
-     * @param array<int, string> $keys
+     * @param  array<string, mixed>  $row
+     * @param  array<int, string>  $keys
      */
     private function value(array $row, array $keys): mixed
     {
@@ -158,6 +242,14 @@ class KasusImport implements ToCollection, WithHeadingRow, SkipsEmptyRows
      * @return array<int, string>
      */
     private function parsePetugas(string $value): array
+    {
+        return $this->parseList($value);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function parseList(string $value): array
     {
         if (trim($value) === '') {
             return [];

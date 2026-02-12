@@ -11,7 +11,7 @@ class CreatePetugas extends CreateRecord
     protected static string $resource = PetugasResource::class;
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
     protected function mutateFormDataBeforeCreate(array $data): array

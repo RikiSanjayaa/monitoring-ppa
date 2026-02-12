@@ -62,16 +62,60 @@ class KasusResource extends Resource
                             ->label('Tanggal LP')
                             ->required(),
                         Forms\Components\Select::make('perkara_id')
-                            ->label('Perkara')
+                            ->label('Jenis Kasus')
                             ->relationship('perkara', 'nama')
                             ->required()
                             ->searchable()
                             ->preload(),
+                        Forms\Components\TextInput::make('tindak_pidana_pasal')
+                            ->label('Tindak Pidana/Pasal')
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('hubungan_pelaku_dengan_korban')
+                            ->label('Hubungan Tersangka dengan Korban')
+                            ->maxLength(255),
                         Forms\Components\Select::make('dokumen_status')
                             ->label('Dokumen / Giat')
                             ->options(DokumenStatus::options())
                             ->required()
                             ->native(false),
+                        Forms\Components\Textarea::make('proses_pidana')
+                            ->label('Proses Pidana')
+                            ->rows(3)
+                            ->columnSpanFull(),
+                        Forms\Components\Textarea::make('kronologi_kejadian')
+                            ->label('Kronologi Kejadian')
+                            ->rows(4)
+                            ->columnSpanFull(),
+                        Forms\Components\FileUpload::make('kronologi_kejadian_file')
+                            ->label('Lampiran Kronologi Kejadian')
+                            ->disk('public')
+                            ->directory('kasus/kronologi')
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'image/*',
+                            ])
+                            ->downloadable()
+                            ->openable()
+                            ->columnSpanFull(),
+                        Forms\Components\Textarea::make('laporan_polisi')
+                            ->label('Laporan Polisi')
+                            ->rows(4)
+                            ->columnSpanFull(),
+                        Forms\Components\FileUpload::make('laporan_polisi_file')
+                            ->label('Lampiran Laporan Polisi')
+                            ->disk('public')
+                            ->directory('kasus/laporan-polisi')
+                            ->acceptedFileTypes([
+                                'application/pdf',
+                                'application/msword',
+                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                                'image/*',
+                            ])
+                            ->downloadable()
+                            ->openable()
+                            ->columnSpanFull(),
                         Forms\Components\Select::make('penyelesaian_id')
                             ->label('Penyelesaian')
                             ->relationship('penyelesaian', 'nama')
@@ -87,40 +131,92 @@ class KasusResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-                Forms\Components\Section::make('Data Korban')
+                Forms\Components\Section::make('Identitas')
                     ->schema([
-                        Forms\Components\TextInput::make('nama_korban')
-                            ->label('Nama Korban')
-                            ->required()
-                            ->maxLength(255),
-                        Forms\Components\TextInput::make('tempat_lahir_korban')
-                            ->label('Tempat Lahir Korban')
-                            ->maxLength(255),
-                        Forms\Components\DatePicker::make('tanggal_lahir_korban')
-                            ->label('Tanggal Lahir Korban'),
-                        Forms\Components\TextInput::make('hp_korban')
-                            ->label('No HP Korban')
-                            ->maxLength(255),
-                        Forms\Components\Textarea::make('alamat_korban')
-                            ->label('Alamat Korban')
-                            ->columnSpanFull(),
-                    ])
-                    ->columns(2),
-                Forms\Components\Section::make('RTL')
-                    ->schema([
-                        Forms\Components\Repeater::make('rtls')
-                            ->relationship()
-                            ->label('Timeline RTL')
+                        Forms\Components\Fieldset::make('Korban')
                             ->schema([
-                                Forms\Components\DatePicker::make('tanggal')
-                                    ->required(),
-                                Forms\Components\Textarea::make('keterangan')
-                                    ->required()
+                                Forms\Components\Repeater::make('korbans')
+                                    ->relationship()
+                                    ->label('Daftar Korban')
+                                    ->defaultItems(1)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('nama')
+                                            ->label('Nama Korban')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('tempat_lahir')
+                                            ->label('Tempat Lahir')
+                                            ->maxLength(255),
+                                        Forms\Components\DatePicker::make('tanggal_lahir')
+                                            ->label('Tanggal Lahir'),
+                                        Forms\Components\TextInput::make('hp')
+                                            ->label('No HP')
+                                            ->maxLength(255),
+                                        Forms\Components\Textarea::make('alamat')
+                                            ->label('Alamat')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2)
                                     ->columnSpanFull(),
                             ])
                             ->columns(2)
-                            ->defaultItems(0)
-                            ->collapsible(),
+                            ->columnSpanFull(),
+                        Forms\Components\Fieldset::make('Tersangka')
+                            ->schema([
+                                Forms\Components\Repeater::make('tersangkas')
+                                    ->relationship('tersangkas')
+                                    ->label('Daftar Tersangka')
+                                    ->defaultItems(1)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('nama')
+                                            ->label('Nama Tersangka')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('tempat_lahir')
+                                            ->label('Tempat Lahir')
+                                            ->maxLength(255),
+                                        Forms\Components\DatePicker::make('tanggal_lahir')
+                                            ->label('Tanggal Lahir'),
+                                        Forms\Components\TextInput::make('hp')
+                                            ->label('No HP')
+                                            ->maxLength(255),
+                                        Forms\Components\Textarea::make('alamat')
+                                            ->label('Alamat')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
+                        Forms\Components\Fieldset::make('Saksi')
+                            ->schema([
+                                Forms\Components\Repeater::make('saksis')
+                                    ->relationship()
+                                    ->label('Daftar Saksi')
+                                    ->defaultItems(0)
+                                    ->schema([
+                                        Forms\Components\TextInput::make('nama')
+                                            ->label('Nama Saksi')
+                                            ->required()
+                                            ->maxLength(255),
+                                        Forms\Components\TextInput::make('tempat_lahir')
+                                            ->label('Tempat Lahir')
+                                            ->maxLength(255),
+                                        Forms\Components\DatePicker::make('tanggal_lahir')
+                                            ->label('Tanggal Lahir'),
+                                        Forms\Components\TextInput::make('hp')
+                                            ->label('No HP')
+                                            ->maxLength(255),
+                                        Forms\Components\Textarea::make('alamat')
+                                            ->label('Alamat')
+                                            ->columnSpanFull(),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
                     ]),
             ]);
     }
@@ -134,10 +230,28 @@ class KasusResource extends Resource
                         Infolists\Components\TextEntry::make('satker.nama')->label('Satker'),
                         Infolists\Components\TextEntry::make('nomor_lp')->label('Nomor LP'),
                         Infolists\Components\TextEntry::make('tanggal_lp')->date('d-m-Y')->label('Tanggal LP'),
-                        Infolists\Components\TextEntry::make('perkara.nama')->label('Perkara'),
+                        Infolists\Components\TextEntry::make('perkara.nama')->label('Jenis Kasus'),
+                        Infolists\Components\TextEntry::make('tindak_pidana_pasal')
+                            ->label('Tindak Pidana/Pasal')
+                            ->default('-'),
+                        Infolists\Components\TextEntry::make('hubungan_pelaku_dengan_korban')
+                            ->label('Hubungan Tersangka dengan Korban')
+                            ->default('-'),
                         Infolists\Components\TextEntry::make('dokumen_status')
                             ->label('Dokumen/Giat')
                             ->formatStateUsing(fn ($state): string => strtoupper((string) ($state?->value ?? $state))),
+                        Infolists\Components\TextEntry::make('proses_pidana')
+                            ->label('Proses Pidana')
+                            ->default('-')
+                            ->columnSpanFull(),
+                        Infolists\Components\TextEntry::make('kronologi_kejadian')
+                            ->label('Kronologi Kejadian')
+                            ->default('-')
+                            ->columnSpanFull(),
+                        Infolists\Components\TextEntry::make('laporan_polisi')
+                            ->label('Laporan Polisi')
+                            ->default('-')
+                            ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('penyelesaian.nama')
                             ->label('Penyelesaian')
                             ->default('-'),
@@ -147,24 +261,69 @@ class KasusResource extends Resource
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
-                Infolists\Components\Section::make('Data Korban')
+                Infolists\Components\Section::make('Lampiran')
                     ->schema([
-                        Infolists\Components\TextEntry::make('nama_korban')->label('Nama Korban'),
-                        Infolists\Components\TextEntry::make('tempat_lahir_korban')->label('Tempat Lahir Korban')->default('-'),
-                        Infolists\Components\TextEntry::make('tanggal_lahir_korban')->date('d-m-Y')->label('Tanggal Lahir Korban')->default('-'),
-                        Infolists\Components\TextEntry::make('hp_korban')->label('HP Korban')->default('-'),
-                        Infolists\Components\TextEntry::make('alamat_korban')->label('Alamat')->columnSpanFull()->default('-'),
-                    ])
-                    ->columns(2),
-                Infolists\Components\Section::make('Timeline RTL')
+                        Infolists\Components\TextEntry::make('kronologi_kejadian_file')
+                            ->label('Lampiran Kronologi Kejadian')
+                            ->formatStateUsing(fn (?string $state): string => static::attachmentPreviewHtml($state))
+                            ->html()
+                            ->columnSpanFull(),
+                        Infolists\Components\TextEntry::make('laporan_polisi_file')
+                            ->label('Lampiran Laporan Polisi')
+                            ->formatStateUsing(fn (?string $state): string => static::attachmentPreviewHtml($state))
+                            ->html()
+                            ->columnSpanFull(),
+                    ]),
+                Infolists\Components\Section::make('Identitas')
                     ->schema([
-                        Infolists\Components\RepeatableEntry::make('rtls')
-                            ->label('')
+                        Infolists\Components\Fieldset::make('Korban')
                             ->schema([
-                                Infolists\Components\TextEntry::make('tanggal')->date('d-m-Y')->label('Tanggal'),
-                                Infolists\Components\TextEntry::make('keterangan')->label('Keterangan'),
+                                Infolists\Components\RepeatableEntry::make('korbans')
+                                    ->label('Daftar Korban')
+                                    ->schema([
+                                        Infolists\Components\TextEntry::make('nama')->label('Nama Korban'),
+                                        Infolists\Components\TextEntry::make('tempat_lahir')->label('Tempat Lahir')->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label('Tanggal Lahir')->default('-'),
+                                        Infolists\Components\TextEntry::make('hp')->label('No HP')->default('-'),
+                                        Infolists\Components\TextEntry::make('alamat')->label('Alamat')->columnSpanFull()->default('-'),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
                             ])
-                            ->columns(2),
+                            ->columns(2)
+                            ->columnSpanFull(),
+                        Infolists\Components\Fieldset::make('Tersangka')
+                            ->schema([
+                                Infolists\Components\RepeatableEntry::make('tersangkas')
+                                    ->label('Daftar Tersangka')
+                                    ->schema([
+                                        Infolists\Components\TextEntry::make('nama')->label('Nama Tersangka'),
+                                        Infolists\Components\TextEntry::make('tempat_lahir')->label('Tempat Lahir')->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label('Tanggal Lahir')->default('-'),
+                                        Infolists\Components\TextEntry::make('hp')->label('No HP')->default('-'),
+                                        Infolists\Components\TextEntry::make('alamat')->label('Alamat')->columnSpanFull()->default('-'),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
+                        Infolists\Components\Fieldset::make('Saksi')
+                            ->schema([
+                                Infolists\Components\RepeatableEntry::make('saksis')
+                                    ->label('Daftar Saksi')
+                                    ->schema([
+                                        Infolists\Components\TextEntry::make('nama')->label('Nama Saksi'),
+                                        Infolists\Components\TextEntry::make('tempat_lahir')->label('Tempat Lahir')->default('-'),
+                                        Infolists\Components\TextEntry::make('tanggal_lahir')->date('d-m-Y')->label('Tanggal Lahir')->default('-'),
+                                        Infolists\Components\TextEntry::make('hp')->label('No HP')->default('-'),
+                                        Infolists\Components\TextEntry::make('alamat')->label('Alamat')->columnSpanFull()->default('-'),
+                                    ])
+                                    ->columns(2)
+                                    ->columnSpanFull(),
+                            ])
+                            ->columns(2)
+                            ->columnSpanFull(),
                     ]),
             ]);
     }
@@ -184,11 +343,30 @@ class KasusResource extends Resource
                     ->label('Tgl LP')
                     ->date('d-m-Y')
                     ->sortable(),
-                Tables\Columns\TextColumn::make('nama_korban')
+                Tables\Columns\TextColumn::make('korban_list')
                     ->label('Korban')
-                    ->searchable(),
+                    ->state(fn (Kasus $record): string => $record->korbanList())
+                    ->limit(30),
+                Tables\Columns\TextColumn::make('tersangka_list')
+                    ->label('Tersangka')
+                    ->state(fn (Kasus $record): string => $record->tersangkaList())
+                    ->limit(30)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('saksi_list')
+                    ->label('Saksi')
+                    ->state(fn (Kasus $record): string => $record->saksis->pluck('nama')->join(', ') ?: '-')
+                    ->limit(30)
+                    ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('perkara.nama')
-                    ->label('Perkara')
+                    ->label('Jenis Kasus')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('tindak_pidana_pasal')
+                    ->label('Tindak Pidana/Pasal')
+                    ->searchable()
+                    ->limit(30)
+                    ->toggleable(isToggledHiddenByDefault: true),
+                Tables\Columns\TextColumn::make('hubungan_pelaku_dengan_korban')
+                    ->label('Hub. Tersangka-Korban')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('latestRtl.keterangan')
                     ->label('RTL Terbaru')
@@ -217,7 +395,7 @@ class KasusResource extends Resource
                     ->relationship('satker', 'nama')
                     ->visible(fn (): bool => Auth::user()?->isSuperAdmin() ?? false),
                 Tables\Filters\SelectFilter::make('perkara_id')
-                    ->label('Perkara')
+                    ->label('Jenis Kasus')
                     ->relationship('perkara', 'nama'),
                 Tables\Filters\SelectFilter::make('dokumen_status')
                     ->label('Dokumen/Giat')
@@ -263,8 +441,43 @@ class KasusResource extends Resource
                 'perkara:id,nama',
                 'penyelesaian:id,nama',
                 'petugas:id,nama',
+                'korbans:id,kasus_id,nama,tempat_lahir,tanggal_lahir,alamat,hp',
+                'tersangkas:id,kasus_id,nama,tempat_lahir,tanggal_lahir,alamat,hp',
+                'saksis:id,kasus_id,nama,tempat_lahir,tanggal_lahir,alamat,hp',
                 'latestRtl',
                 'rtls:id,kasus_id,tanggal,keterangan',
             ]);
+    }
+
+    private static function attachmentPreviewHtml(?string $path): string
+    {
+        if (! $path) {
+            return '<span style="color:#9ca3af;">Belum ada lampiran.</span>';
+        }
+
+        $url = '/storage/'.$path;
+        $fileName = basename($path);
+        $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+        $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);
+
+        $previewHtml = $isImage
+            ? sprintf(
+                '<a href="%s" target="_blank" rel="noopener noreferrer"><img src="%s" alt="%s" style="max-width:420px;max-height:280px;border-radius:10px;border:1px solid #d1d5db;object-fit:cover;"></a>',
+                e($url),
+                e($url),
+                e($fileName),
+            )
+            : sprintf(
+                '<div style="display:inline-block;padding:10px 12px;border:1px dashed #9ca3af;border-radius:10px;color:#6b7280;">Preview tidak tersedia untuk .%s</div>',
+                e($extension !== '' ? $extension : 'file'),
+            );
+
+        return sprintf(
+            '<div style="display:flex;flex-direction:column;gap:8px;"><div>%s</div><div style="font-weight:600;">%s</div><div style="display:flex;gap:8px;"><a href="%s" target="_blank" rel="noopener noreferrer" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;text-decoration:none;">Buka</a><a href="%s" download style="padding:6px 10px;border:1px solid #d1d5db;border-radius:8px;text-decoration:none;">Unduh</a></div></div>',
+            $previewHtml,
+            e($fileName),
+            e($url),
+            e($url),
+        );
     }
 }

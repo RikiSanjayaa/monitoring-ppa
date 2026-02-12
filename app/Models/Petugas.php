@@ -28,7 +28,7 @@ class Petugas extends Model
 
     protected static function booted(): void
     {
-        static::addGlobalScope(new SatkerScope());
+        static::addGlobalScope(new SatkerScope);
     }
 
     public function satker(): BelongsTo

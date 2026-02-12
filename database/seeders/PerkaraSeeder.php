@@ -13,10 +13,10 @@ class PerkaraSeeder extends Seeder
     public function run(): void
     {
         $perkaras = [
-            'TPKS',
-            'Pemerkosaan',
-            'Perzinaan',
-            'TPPO',
+            'Kasus Kekerasan terhadap Perempuan (KTP)',
+            'Kasus Kekerasan terhadap Anak (KTA)',
+            'Kasus Anak Berhadapan dengan Hukum (ABH)',
+            'Kasus Tindak Pidana Perdagangan Orang (TPPO)',
         ];
 
         foreach ($perkaras as $nama) {

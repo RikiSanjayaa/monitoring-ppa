@@ -51,14 +51,15 @@ class UserResource extends Resource
                     ->label('Role')
                     ->options(UserRole::options())
                     ->required()
+                    ->live()
                     ->native(false),
                 Forms\Components\Select::make('satker_id')
                     ->label('Satker')
                     ->relationship('satker', 'nama')
                     ->searchable()
                     ->preload()
-                    ->visible(fn (Forms\Get $get): bool => $get('role') === UserRole::Admin->value)
-                    ->required(fn (Forms\Get $get): bool => $get('role') === UserRole::Admin->value),
+                    ->visible(fn (Forms\Get $get): bool => in_array($get('role'), [UserRole::Admin, UserRole::Admin->value], true))
+                    ->required(fn (Forms\Get $get): bool => in_array($get('role'), [UserRole::Admin, UserRole::Admin->value], true)),
                 Forms\Components\TextInput::make('password')
                     ->label('Password')
                     ->password()

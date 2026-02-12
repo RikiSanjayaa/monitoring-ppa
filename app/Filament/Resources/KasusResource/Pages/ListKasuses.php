@@ -2,12 +2,12 @@
 
 namespace App\Filament\Resources\KasusResource\Pages;
 
-use App\Exports\KasusExport;
 use App\Exports\KasusTemplateExport;
 use App\Filament\Resources\KasusResource;
 use App\Imports\KasusImport;
 use App\Models\Satker;
-use App\Support\KasusSummary;
+use App\Support\ExportDocumentTemplate;
+use App\Support\KasusTemplateSpreadsheet;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Forms;
@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class ListKasuses extends ListRecords
 {
@@ -30,7 +31,7 @@ class ListKasuses extends ListRecords
                 Actions\Action::make('downloadKasusTemplate')
                     ->label('Download Template Kasus')
                     ->icon('heroicon-o-document-arrow-down')
-                    ->action(fn () => Excel::download(new KasusTemplateExport(), 'template-import-kasus.xlsx')),
+                    ->action(fn () => Excel::download(new KasusTemplateExport, 'template-import-kasus.xlsx')),
                 Actions\Action::make('importKasus')
                     ->label('Import Kasus')
                     ->icon('heroicon-o-arrow-up-tray')
@@ -60,19 +61,32 @@ class ListKasuses extends ListRecords
                 ->button()
                 ->action(function () {
                     $records = (clone $this->getFilteredTableQuery())
-                        ->with(['satker:id,nama', 'perkara:id,nama', 'penyelesaian:id,nama', 'petugas:id,nama'])
+                        ->with([
+                            'satker:id,nama',
+                            'perkara:id,nama',
+                            'penyelesaian:id,nama',
+                            'petugas:id,nama',
+                            'korbans:id,kasus_id,nama',
+                            'tersangkas:id,kasus_id,nama',
+                            'saksis:id,kasus_id,nama',
+                        ])
                         ->get();
 
-                    $summary = KasusSummary::fromCollection($records);
+                    $satkerId = $this->resolveExportSatkerId($records);
+                    $userId = Auth::id();
+                    $titles = ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId);
 
                     $pdf = Pdf::loadView('exports.kasus-report', [
                         'records' => $records,
-                        'summary' => $summary,
                         'printedAt' => now()->format('d-m-Y H:i'),
+                        'kopSuratLines' => ExportDocumentTemplate::kopSuratLines($userId, $satkerId),
+                        'mainTitle' => $titles['main'],
+                        'recapTitle' => $titles['recap'],
+                        'signatureBlock' => ExportDocumentTemplate::signatureBlock($userId, $satkerId),
                     ])->setPaper('a4', 'landscape');
 
                     return response()->streamDownload(
-                        static fn () => print($pdf->output()),
+                        static fn () => print ($pdf->output()),
                         'laporan-kasus-'.now()->format('Ymd_His').'.pdf',
                     );
                 }),
@@ -82,10 +96,28 @@ class ListKasuses extends ListRecords
                 ->color('success')
                 ->button()
                 ->action(function () {
-                    return Excel::download(
-                        KasusExport::fromQuery(clone $this->getFilteredTableQuery()),
-                        'kasus-'.now()->format('Ymd_His').'.xlsx',
-                    );
+                    $records = (clone $this->getFilteredTableQuery())
+                        ->with([
+                            'satker:id,nama',
+                            'perkara:id,nama',
+                            'penyelesaian:id,nama',
+                            'petugas:id,nama',
+                            'korbans:id,kasus_id,nama',
+                            'tersangkas:id,kasus_id,nama',
+                            'saksis:id,kasus_id,nama',
+                        ])
+                        ->get();
+
+                    $satkerId = $this->resolveExportSatkerId($records);
+                    $userId = Auth::id();
+
+                    $spreadsheet = KasusTemplateSpreadsheet::build($records, $satkerId, $userId);
+                    $fileName = 'kasus-'.now()->format('Ymd_His').'.xlsx';
+
+                    return response()->streamDownload(function () use ($spreadsheet): void {
+                        $writer = new Xlsx($spreadsheet);
+                        $writer->save('php://output');
+                    }, $fileName);
                 }),
         ];
     }
@@ -117,7 +149,7 @@ class ListKasuses extends ListRecords
     }
 
     /**
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     private function resolveSatkerId(array $data): int
     {
@@ -136,5 +168,25 @@ class ListKasuses extends ListRecords
         }
 
         return $satkerId;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, \App\Models\Kasus>  $records
+     */
+    private function resolveExportSatkerId($records): ?int
+    {
+        $user = Auth::user();
+
+        if ($user?->isAdmin() && $user->satker_id) {
+            return (int) $user->satker_id;
+        }
+
+        $satkerIds = $records->pluck('satker_id')->filter()->unique()->values();
+
+        if ($satkerIds->count() === 1) {
+            return (int) $satkerIds->first();
+        }
+
+        return null;
     }
 }
