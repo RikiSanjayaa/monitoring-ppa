@@ -51,10 +51,19 @@ class AuditLogResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('module')
                     ->label('Modul')
-                    ->badge(),
+                    ->badge()
+                    ->color('gray'),
                 Tables\Columns\TextColumn::make('action')
                     ->label('Aksi')
-                    ->badge(),
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'create' => 'success',
+                        'update' => 'warning',
+                        'delete' => 'danger',
+                        'login' => 'info',
+                        'logout' => 'gray',
+                        default => 'gray',
+                    }),
                 Tables\Columns\TextColumn::make('summary')
                     ->label('Ringkasan')
                     ->wrap()
@@ -100,8 +109,21 @@ class AuditLogResource extends Resource
                         Infolists\Components\TextEntry::make('created_at')->label('Waktu')->dateTime('d-m-Y H:i:s'),
                         Infolists\Components\TextEntry::make('actor.name')->label('Aktor')->default('-'),
                         Infolists\Components\TextEntry::make('satker.nama')->label('Satker')->default('-'),
-                        Infolists\Components\TextEntry::make('module')->label('Modul')->badge(),
-                        Infolists\Components\TextEntry::make('action')->label('Aksi')->badge(),
+                        Infolists\Components\TextEntry::make('module')
+                            ->label('Modul')
+                            ->badge()
+                            ->color('gray'),
+                        Infolists\Components\TextEntry::make('action')
+                            ->label('Aksi')
+                            ->badge()
+                            ->color(fn (string $state): string => match ($state) {
+                                'create' => 'success',
+                                'update' => 'warning',
+                                'delete' => 'danger',
+                                'login' => 'info',
+                                'logout' => 'gray',
+                                default => 'gray',
+                            }),
                         Infolists\Components\TextEntry::make('summary')->label('Ringkasan')->columnSpanFull(),
                         Infolists\Components\TextEntry::make('changes')
                             ->label('Perubahan')

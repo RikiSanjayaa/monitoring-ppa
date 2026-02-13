@@ -36,7 +36,7 @@ class KasusRecapSummary
 
                 return [
                     'jenis' => $jenis,
-                    'pasal' => $first?->tindak_pidana_pasal ?: '-',
+                    'pasal' => self::joinPasal($items),
                     'jumlah_korban' => self::totalKorban($items),
                     'jumlah_tersangka' => self::totalTersangka($items),
                     'jumlah_saksi' => $items->sum(fn (Kasus $kasus): int => $kasus->saksis->count()),
@@ -120,5 +120,20 @@ class KasusRecapSummary
     private static function totalTersangka(Collection $records): int
     {
         return $records->sum(fn (Kasus $kasus): int => $kasus->tersangkas->count());
+    }
+
+    /**
+     * @param  Collection<int, Kasus>  $records
+     */
+    private static function joinPasal(Collection $records): string
+    {
+        $pasals = $records
+            ->pluck('tindak_pidana_pasal')
+            ->map(fn ($value): string => trim((string) $value))
+            ->filter(fn (string $value): bool => $value !== '')
+            ->unique()
+            ->values();
+
+        return $pasals->isEmpty() ? '-' : $pasals->join(', ');
     }
 }

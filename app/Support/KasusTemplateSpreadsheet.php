@@ -112,7 +112,17 @@ class KasusTemplateSpreadsheet
                 $penyelesaianColumnIndex++;
             }
 
-            self::setCell($sheet, $penyelesaianColumnIndex, $row, $record->latestRtl?->keterangan ?? '-');
+            $ket = '-';
+
+            if ($record->latestRtl) {
+                $ket = sprintf(
+                    '%s - %s',
+                    $record->latestRtl->tanggal?->format('d-m-Y') ?? '-',
+                    $record->latestRtl->keterangan ?? '-',
+                );
+            }
+
+            self::setCell($sheet, $penyelesaianColumnIndex, $row, $ket);
             $row++;
         }
 

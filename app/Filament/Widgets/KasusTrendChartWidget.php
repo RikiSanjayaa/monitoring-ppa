@@ -40,9 +40,11 @@ class KasusTrendChartWidget extends ChartWidget
                     'label' => 'Jumlah Kasus',
                     'data' => $grouped->values()->all(),
                     'borderColor' => '#f59e0b',
-                    'backgroundColor' => 'rgba(245, 158, 11, 0.2)',
+                    'backgroundColor' => 'rgba(245, 158, 11, 0.22)',
                     'fill' => true,
                     'tension' => 0.35,
+                    'pointBackgroundColor' => '#f59e0b',
+                    'pointBorderColor' => '#f59e0b',
                 ],
             ],
             'labels' => $grouped

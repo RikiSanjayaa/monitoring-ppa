@@ -119,6 +119,40 @@
         .rekap .num-col {
             width: 56px;
         }
+
+        .vertical-head {
+            width: 36px;
+            padding: 2px 1px;
+            vertical-align: middle;
+        }
+
+        .vertical-head > span {
+            display: block;
+            transform: none;
+            white-space: normal;
+            line-height: 1.1;
+            font-size: 9px;
+            text-align: center;
+        }
+
+        .vertical-cell {
+            text-align: center;
+            width: 36px;
+            padding: 2px 1px;
+            font-weight: 600;
+        }
+
+        .rekap-section {
+            page-break-before: always;
+        }
+
+        .rekap thead {
+            display: table-header-group;
+        }
+
+        .rekap tr {
+            page-break-inside: avoid;
+        }
     </style>
 </head>
 
@@ -148,7 +182,14 @@
             ],
         ];
         $penyelesaianColumns = $recapData['penyelesaian_columns'];
-        $hasPenyelesaianColumns = $penyelesaianColumns->isNotEmpty();
+        $rekapPenyelesaianColumns = collect([
+            ['key' => 'lidik', 'label' => 'LIDIK'],
+            ['key' => 'sidik', 'label' => 'SIDIK'],
+        ])->merge($penyelesaianColumns->map(fn($column) => [
+            'key' => $column['key'],
+            'label' => strtoupper((string) $column['label']),
+            'id' => $column['id'],
+        ]));
     @endphp
 
     @forelse ($recordsByJenis as $jenisKasus => $groupedRecords)
@@ -163,18 +204,20 @@
                     <th rowspan="2">TINDAK PIDANA/PASAL</th>
                     <th colspan="2">IDENTITAS</th>
                     <th rowspan="2">HUB. TERSANGKA DENGAN KORBAN</th>
-                    <th rowspan="2">LIDIK</th>
-                    <th rowspan="2">SIDIK</th>
-                    @forelse ($penyelesaianColumns as $column)
-                        <th rowspan="2">{{ strtoupper((string) $column['label']) }}</th>
-                    @empty
+                    <th colspan="{{ max(1, $rekapPenyelesaianColumns->count()) }}">PENYELESAIAN PERKARA</th>
+                    @if ($rekapPenyelesaianColumns->isEmpty())
                         <th rowspan="2">-</th>
-                    @endforelse
-                    <th rowspan="2">KET</th>
+                    @endif
+                    <th rowspan="2" class="vertical-head"><span>KET</span></th>
                 </tr>
                 <tr>
                     <th>KORBAN</th>
                     <th>TERSANGKA</th>
+                    @forelse ($rekapPenyelesaianColumns as $column)
+                        <th class="vertical-head"><span>{{ strtoupper((string) $column['label']) }}</span></th>
+                    @empty
+                        <th class="vertical-head"><span>-</span></th>
+                    @endforelse
                 </tr>
             </thead>
             <tbody>
@@ -193,14 +236,25 @@
                         <td>{{ $korbanText !== '' ? $korbanText : '-' }}</td>
                         <td>{{ $tersangkaText !== '' ? $tersangkaText : '-' }}</td>
                         <td>{{ $record->hubungan_pelaku_dengan_korban ?: '-' }}</td>
-                        <td class="center">{{ $record->dokumen_status?->value === 'lidik' ? '1' : '' }}</td>
-                        <td class="center">{{ $record->dokumen_status?->value === 'sidik' ? '1' : '' }}</td>
-                        @forelse ($penyelesaianColumns as $column)
-                            <td class="center">{{ $penyelesaianId === (int) $column['id'] ? '1' : '' }}</td>
-                        @empty
-                            <td class="center"></td>
-                        @endforelse
-                        <td class="small">{{ $record->latestRtl?->keterangan ?? '-' }}</td>
+                        @foreach ($rekapPenyelesaianColumns as $column)
+                            @if ($column['key'] === 'lidik')
+                                <td class="vertical-cell">{{ $record->dokumen_status?->value === 'lidik' ? '1' : '' }}</td>
+                            @elseif ($column['key'] === 'sidik')
+                                <td class="vertical-cell">{{ $record->dokumen_status?->value === 'sidik' ? '1' : '' }}</td>
+                            @else
+                                <td class="vertical-cell">{{ $penyelesaianId === (int) $column['id'] ? '1' : '' }}</td>
+                            @endif
+                        @endforeach
+                        @if ($rekapPenyelesaianColumns->isEmpty())
+                            <td class="vertical-cell"></td>
+                        @endif
+                        <td class="small">
+                            @if ($record->latestRtl)
+                                {{ $record->latestRtl->tanggal?->format('d-m-Y') ?? '-' }} - {{ $record->latestRtl->keterangan ?: '-' }}
+                            @else
+                                -
+                            @endif
+                        </td>
                     </tr>
                 @endforeach
             </tbody>
@@ -215,10 +269,10 @@
         </table>
     @endforelse
 
-    <div class="spacer"></div>
-    <div class="title">{{ $recapTitle }}</div>
+    <div class="rekap-section">
+        <div class="title">{{ $recapTitle }}</div>
 
-    <table class="rekap">
+        <table class="rekap">
         <colgroup>
             <col style="width: 34px;">
             <col class="jenis">
@@ -226,12 +280,10 @@
             <col class="num-col">
             <col class="num-col">
             <col class="num-col">
-            <col class="num-col">
-            <col class="num-col">
-            @foreach ($penyelesaianColumns as $column)
+            @foreach ($rekapPenyelesaianColumns as $column)
                 <col class="num-col">
             @endforeach
-            @if (! $hasPenyelesaianColumns)
+            @if ($rekapPenyelesaianColumns->isEmpty())
                 <col class="num-col">
             @endif
             <col class="num-col">
@@ -243,21 +295,18 @@
                 <th rowspan="2">JENIS TP</th>
                 <th rowspan="2">TP.PASAL</th>
                 <th colspan="3">JUMLAH</th>
-                <th colspan="2">DOKUMEN/GIAT</th>
-                <th colspan="{{ max(1, $penyelesaianColumns->count()) }}">PENYELESAIAN PERKARA</th>
-                <th rowspan="2">JML</th>
-                <th rowspan="2">KET</th>
+                <th colspan="{{ max(1, $rekapPenyelesaianColumns->count()) }}">PENYELESAIAN PERKARA</th>
+                <th rowspan="2" class="vertical-head"><span>JML</span></th>
+                <th rowspan="2" class="vertical-head"><span>KET</span></th>
             </tr>
             <tr>
-                <th>KORBAN</th>
-                <th>TERSANGKA</th>
-                <th>SAKSI</th>
-                <th>LIDIK</th>
-                <th>SIDIK</th>
-                @forelse ($penyelesaianColumns as $column)
-                    <th>{{ strtoupper((string) $column['label']) }}</th>
+                <th class="vertical-head"><span>KORBAN</span></th>
+                <th class="vertical-head"><span>TERSANGKA</span></th>
+                <th class="vertical-head"><span>SAKSI</span></th>
+                @forelse ($rekapPenyelesaianColumns as $column)
+                    <th class="vertical-head"><span>{{ strtoupper((string) $column['label']) }}</span></th>
                 @empty
-                    <th>-</th>
+                    <th class="vertical-head"><span>-</span></th>
                 @endforelse
             </tr>
         </thead>
@@ -267,39 +316,48 @@
                     <td class="num">{{ $loop->iteration }}</td>
                     <td>{{ $row['jenis'] }}</td>
                     <td>{{ $row['pasal'] }}</td>
-                    <td class="center">{{ $row['jumlah_korban'] }}</td>
-                    <td class="center">{{ $row['jumlah_tersangka'] }}</td>
-                    <td class="center">{{ $row['jumlah_saksi'] }}</td>
-                    <td class="center">{{ $row['lidik'] }}</td>
-                    <td class="center">{{ $row['sidik'] }}</td>
-                    @forelse ($penyelesaianColumns as $column)
-                        <td class="center">{{ $row['penyelesaian_counts'][$column['key']] ?? 0 }}</td>
+                    <td class="vertical-cell">{{ $row['jumlah_korban'] }}</td>
+                    <td class="vertical-cell">{{ $row['jumlah_tersangka'] }}</td>
+                    <td class="vertical-cell">{{ $row['jumlah_saksi'] }}</td>
+                    @forelse ($rekapPenyelesaianColumns as $column)
+                        @if ($column['key'] === 'lidik')
+                            <td class="vertical-cell">{{ $row['lidik'] }}</td>
+                        @elseif ($column['key'] === 'sidik')
+                            <td class="vertical-cell">{{ $row['sidik'] }}</td>
+                        @else
+                            <td class="vertical-cell">{{ $row['penyelesaian_counts'][$column['key']] ?? 0 }}</td>
+                        @endif
                     @empty
-                        <td class="center">0</td>
+                        <td class="vertical-cell">0</td>
                     @endforelse
-                    <td class="center">{{ $row['jumlah'] }}</td>
+                    <td class="vertical-cell">{{ $row['jumlah'] }}</td>
                     <td></td>
                 </tr>
             @endforeach
             <tr>
                 <td class="center" colspan="3"><strong>JUMLAH TOTAL</strong></td>
-                <td class="center"><strong>{{ $recapData['totals']['jumlah_korban'] }}</strong></td>
-                <td class="center"><strong>{{ $recapData['totals']['jumlah_tersangka'] }}</strong></td>
-                <td class="center"><strong>{{ $recapData['totals']['jumlah_saksi'] }}</strong></td>
-                <td class="center"><strong>{{ $recapData['totals']['lidik'] }}</strong></td>
-                <td class="center"><strong>{{ $recapData['totals']['sidik'] }}</strong></td>
-                @forelse ($penyelesaianColumns as $column)
-                    <td class="center">
-                        <strong>{{ $recapData['totals']['penyelesaian_counts'][$column['key']] ?? 0 }}</strong>
-                    </td>
+                <td class="vertical-cell"><strong>{{ $recapData['totals']['jumlah_korban'] }}</strong></td>
+                <td class="vertical-cell"><strong>{{ $recapData['totals']['jumlah_tersangka'] }}</strong></td>
+                <td class="vertical-cell"><strong>{{ $recapData['totals']['jumlah_saksi'] }}</strong></td>
+                @forelse ($rekapPenyelesaianColumns as $column)
+                    @if ($column['key'] === 'lidik')
+                        <td class="vertical-cell"><strong>{{ $recapData['totals']['lidik'] }}</strong></td>
+                    @elseif ($column['key'] === 'sidik')
+                        <td class="vertical-cell"><strong>{{ $recapData['totals']['sidik'] }}</strong></td>
+                    @else
+                        <td class="vertical-cell">
+                            <strong>{{ $recapData['totals']['penyelesaian_counts'][$column['key']] ?? 0 }}</strong>
+                        </td>
+                    @endif
                 @empty
-                    <td class="center"><strong>0</strong></td>
+                    <td class="vertical-cell"><strong>0</strong></td>
                 @endforelse
-                <td class="center"><strong>{{ $recapData['totals']['jumlah'] }}</strong></td>
+                <td class="vertical-cell"><strong>{{ $recapData['totals']['jumlah'] }}</strong></td>
                 <td></td>
             </tr>
         </tbody>
-    </table>
+        </table>
+    </div>
 
     <div class="signature">
         <div class="right">

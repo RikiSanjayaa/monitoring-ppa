@@ -123,6 +123,7 @@ class KasusSummarySyncTest extends TestCase
         $kasusKtp1 = $this->createKasus($satker, $perkaraKtp, [
             'dokumen_status' => DokumenStatus::Lidik->value,
             'penyelesaian_id' => $henti->id,
+            'tindak_pidana_pasal' => 'Pasal 1',
         ]);
         $kasusKtp1->korbans()->createMany([
             ['nama' => 'Korban 1'],
@@ -139,6 +140,7 @@ class KasusSummarySyncTest extends TestCase
         $kasusKtp2 = $this->createKasus($satker, $perkaraKtp, [
             'dokumen_status' => DokumenStatus::Sidik->value,
             'penyelesaian_id' => $pelimpahan->id,
+            'tindak_pidana_pasal' => 'Pasal 2',
         ]);
         $kasusKtp2->korbans()->createMany([
             ['nama' => 'Korban Tambahan'],
@@ -185,6 +187,7 @@ class KasusSummarySyncTest extends TestCase
         $totals = $recap['totals'];
 
         $this->assertSame(3, $rowKtp['jumlah_korban']);
+        $this->assertSame('Pasal 1, Pasal 2', $rowKtp['pasal']);
         $this->assertSame(2, $rowKtp['jumlah_tersangka']);
         $this->assertSame(2, $rowKtp['jumlah_saksi']);
         $this->assertSame(1, $rowKtp['lidik']);
@@ -194,6 +197,7 @@ class KasusSummarySyncTest extends TestCase
         $this->assertSame(4, $rowKtp['jumlah']);
 
         $this->assertSame(1, $rowKta['jumlah_korban']);
+        $this->assertSame('-', $rowKta['pasal']);
         $this->assertSame(2, $rowKta['jumlah_tersangka']);
         $this->assertSame(1, $rowKta['jumlah_saksi']);
         $this->assertSame(0, $rowKta['lidik']);

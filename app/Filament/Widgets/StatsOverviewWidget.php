@@ -76,12 +76,12 @@ class StatsOverviewWidget extends BaseWidget
                 ->color('success'),
         ];
 
-        if ($user?->isSuperAdmin()) {
-            $stats[] = Stat::make('Total Satker', (string) Satker::query()->count())
-                ->description('Satker + Subdit tercatat')
-                ->descriptionIcon('heroicon-m-building-office-2')
-                ->color('primary');
-        }
+        // if ($user?->isSuperAdmin()) {
+        //     $stats[] = Stat::make('Total Satker', (string) Satker::query()->count())
+        //         ->description('Satker + Subdit tercatat')
+        //         ->descriptionIcon('heroicon-m-building-office-2')
+        //         ->color('primary');
+        // }
 
         return $stats;
     }
