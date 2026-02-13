@@ -105,6 +105,157 @@ Seeder mencakup seluruh tabel inti aplikasi:
 php artisan test
 ```
 
+## Deploy ke VPS (Laravel + Filament)
+
+Panduan ini mengikuti praktik dari dokumentasi Laravel Deployment dan Filament Panel Installation/Production Optimization:
+
+- Laravel deployment: https://laravel.com/docs/12.x/deployment
+- Filament panels install/production optimize: https://filamentphp.com/docs/3.x/panels/installation
+
+### 1) Siapkan server
+
+- OS Linux (Ubuntu/Debian umum dipakai)
+- PHP 8.2+ + extension Laravel standar (`mbstring`, `xml`, `curl`, `pdo`, `fileinfo`, dll)
+- Composer
+- Nginx
+- MySQL/MariaDB (atau SQLite bila sesuai kebutuhan)
+
+### 2) Clone project dan install dependency produksi
+
+```bash
+git clone <repo-url> /var/www/monitoring-ppa
+cd /var/www/monitoring-ppa
+composer install --no-dev --optimize-autoloader
+```
+
+### 3) Konfigurasi environment
+
+```bash
+cp .env.example .env
+php artisan key:generate
+```
+
+Lalu atur minimal ini di `.env`:
+
+- `APP_ENV=production`
+- `APP_DEBUG=false`
+- `APP_URL=https://domain-anda`
+- kredensial database (`DB_*`)
+- mail/queue sesuai kebutuhan
+
+### 4) Migrasi database + link storage
+
+```bash
+php artisan migrate --force
+php artisan storage:link
+```
+
+### 5) Optimasi Laravel + Filament
+
+```bash
+php artisan optimize
+php artisan filament:optimize
+```
+
+Catatan:
+
+- `filament:optimize` akan cache komponen Filament + icon cache untuk performa panel.
+- Saat rollback/troubleshooting cache, gunakan:
+
+```bash
+php artisan optimize:clear
+php artisan filament:optimize-clear
+```
+
+### 6) Konfigurasi Nginx (contoh)
+
+Pastikan `root` menunjuk ke folder `public`.
+
+```nginx
+server {
+    listen 80;
+    listen [::]:80;
+    server_name domain-anda;
+    root /var/www/monitoring-ppa/public;
+
+    add_header X-Frame-Options "SAMEORIGIN";
+    add_header X-Content-Type-Options "nosniff";
+
+    index index.php;
+    charset utf-8;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location = /robots.txt  { access_log off; log_not_found off; }
+
+    error_page 404 /index.php;
+
+    location ~ ^/index\.php(/|$) {
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_hide_header X-Powered-By;
+    }
+
+    location ~ /\.(?!well-known).* {
+        deny all;
+    }
+}
+```
+
+Reload service setelah ubah config:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+sudo systemctl reload php8.2-fpm
+```
+
+### 7) Permission folder runtime
+
+Web server user harus bisa menulis ke:
+
+- `storage/`
+- `bootstrap/cache/`
+
+Contoh cepat:
+
+```bash
+sudo chown -R www-data:www-data storage bootstrap/cache
+sudo chmod -R 775 storage bootstrap/cache
+```
+
+### 8) Jalankan scheduler & queue worker (disarankan)
+
+- Cron scheduler:
+
+```bash
+* * * * * cd /var/www/monitoring-ppa && php artisan schedule:run >> /dev/null 2>&1
+```
+
+- Queue worker via Supervisor/systemd bila `QUEUE_CONNECTION` bukan `sync`.
+
+### 9) Buat akun admin Filament
+
+```bash
+php artisan make:filament-user
+```
+
+Panel aplikasi ada di path root `/`.
+
+### 10) Checklist deploy update (release berikutnya)
+
+```bash
+git pull
+composer install --no-dev --optimize-autoloader
+php artisan migrate --force
+php artisan optimize
+php artisan filament:optimize
+php artisan queue:restart
+```
+
 ## Catatan
 
 - `SatkerScope` membatasi query model `Kasus` dan `Petugas` untuk user `admin`.

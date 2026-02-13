@@ -49,8 +49,12 @@ class ExportDocumentTemplate
      * @param  Collection<int, \App\Models\Kasus>  $records
      * @return array{main: string, recap: string}
      */
-    public static function automaticTitles(Collection $records, ?int $userId = null, ?int $satkerId = null): array
-    {
+    public static function automaticTitles(
+        Collection $records,
+        ?int $userId = null,
+        ?int $satkerId = null,
+        ?Carbon $periodDate = null,
+    ): array {
         Carbon::setLocale('id');
 
         $satkerPart = self::satkerTitlePart($records, $satkerId);
@@ -59,14 +63,22 @@ class ExportDocumentTemplate
         $month = strtoupper(now()->translatedFormat('F'));
         $year = (string) now()->year;
 
-        $tanggalSample = $records
-            ->pluck('tanggal_lp')
-            ->filter()
-            ->first();
+        if ($periodDate instanceof Carbon) {
+            $month = strtoupper($periodDate->translatedFormat('F'));
+            $year = (string) $periodDate->year;
+        }
 
-        if ($tanggalSample instanceof Carbon) {
-            $month = strtoupper($tanggalSample->translatedFormat('F'));
-            $year = (string) $tanggalSample->year;
+        if (! ($periodDate instanceof Carbon)) {
+            $tanggalSample = $records
+                ->pluck('tanggal_lp')
+                ->filter()
+                ->sort()
+                ->first();
+
+            if ($tanggalSample instanceof Carbon) {
+                $month = strtoupper($tanggalSample->translatedFormat('F'));
+                $year = (string) $tanggalSample->year;
+            }
         }
 
         return [

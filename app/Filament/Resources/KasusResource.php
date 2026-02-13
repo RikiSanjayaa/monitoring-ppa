@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\HtmlString;
 
@@ -433,7 +434,87 @@ class KasusResource extends Resource
                 Tables\Filters\SelectFilter::make('penyelesaian_id')
                     ->label('Penyelesaian')
                     ->relationship('penyelesaian', 'nama'),
+                Tables\Filters\Filter::make('periode_tanggal')
+                    ->label('Periode Tanggal LP')
+                    ->columnSpanFull()
+                    ->columns(3)
+                    ->form([
+                        Forms\Components\Select::make('preset')
+                            ->label('Preset')
+                            ->options([
+                                'bulan_ini' => 'Bulan Ini',
+                                'bulan_lalu' => 'Bulan Lalu',
+                            ])
+                            ->native(false)
+                            ->columnSpan(1),
+                        Forms\Components\DatePicker::make('from_date')
+                            ->label('Dari Tanggal')
+                            ->columnSpan(1),
+                        Forms\Components\DatePicker::make('to_date')
+                            ->label('Sampai Tanggal')
+                            ->columnSpan(1),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        $preset = $data['preset'] ?? null;
+
+                        if ($preset === 'bulan_ini') {
+                            $start = Carbon::now()->startOfMonth()->toDateString();
+                            $end = Carbon::now()->endOfMonth()->toDateString();
+
+                            return $query
+                                ->whereDate('tanggal_lp', '>=', $start)
+                                ->whereDate('tanggal_lp', '<=', $end);
+                        }
+
+                        if ($preset === 'bulan_lalu') {
+                            $start = Carbon::now()->subMonthNoOverflow()->startOfMonth()->toDateString();
+                            $end = Carbon::now()->subMonthNoOverflow()->endOfMonth()->toDateString();
+
+                            return $query
+                                ->whereDate('tanggal_lp', '>=', $start)
+                                ->whereDate('tanggal_lp', '<=', $end);
+                        }
+
+                        return $query
+                            ->when(
+                                ! empty($data['from_date']),
+                                fn (Builder $builder): Builder => $builder->whereDate('tanggal_lp', '>=', (string) $data['from_date'])
+                            )
+                            ->when(
+                                ! empty($data['to_date']),
+                                fn (Builder $builder): Builder => $builder->whereDate('tanggal_lp', '<=', (string) $data['to_date'])
+                            );
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        $preset = $data['preset'] ?? null;
+
+                        if ($preset === 'bulan_ini') {
+                            return 'Periode: Bulan Ini';
+                        }
+
+                        if ($preset === 'bulan_lalu') {
+                            return 'Periode: Bulan Lalu';
+                        }
+
+                        $from = $data['from_date'] ?? null;
+                        $to = $data['to_date'] ?? null;
+
+                        if ($from && $to) {
+                            return sprintf('Periode: %s s/d %s', Carbon::parse((string) $from)->format('d-m-Y'), Carbon::parse((string) $to)->format('d-m-Y'));
+                        }
+
+                        if ($from) {
+                            return sprintf('Dari: %s', Carbon::parse((string) $from)->format('d-m-Y'));
+                        }
+
+                        if ($to) {
+                            return sprintf('Sampai: %s', Carbon::parse((string) $to)->format('d-m-Y'));
+                        }
+
+                        return null;
+                    }),
             ])
+            ->filtersFormColumns(2)
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),

@@ -13,8 +13,15 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 class KasusTemplateSpreadsheet
 {
-    public static function build(Collection $records, ?int $satkerId = null, ?int $userId = null): Spreadsheet
-    {
+    /**
+     * @param  array{main: string, recap: string}|null  $titles
+     */
+    public static function build(
+        Collection $records,
+        ?int $satkerId = null,
+        ?int $userId = null,
+        ?array $titles = null,
+    ): Spreadsheet {
         $spreadsheet = new Spreadsheet;
         $recapData = KasusRecapSummary::fromCollection($records);
         $penyelesaianColumns = $recapData['penyelesaian_columns'];
@@ -26,20 +33,20 @@ class KasusTemplateSpreadsheet
         if ($recordsByJenis->isEmpty()) {
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setTitle(self::nextSheetTitle('Detail', $usedSheetTitles));
-            self::fillDetailSheet($sheet, collect(), 'Tidak Ada Data', $penyelesaianColumns, $satkerId, $userId);
+            self::fillDetailSheet($sheet, collect(), 'Tidak Ada Data', $penyelesaianColumns, $satkerId, $userId, $titles);
             $sheetIndex++;
         } else {
             foreach ($recordsByJenis as $jenisKasus => $groupedRecords) {
                 $sheet = $sheetIndex === 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
                 $sheet->setTitle(self::nextSheetTitle((string) $jenisKasus, $usedSheetTitles));
-                self::fillDetailSheet($sheet, $groupedRecords, (string) $jenisKasus, $penyelesaianColumns, $satkerId, $userId);
+                self::fillDetailSheet($sheet, $groupedRecords, (string) $jenisKasus, $penyelesaianColumns, $satkerId, $userId, $titles);
                 $sheetIndex++;
             }
         }
 
         $recapSheet = $spreadsheet->createSheet();
         $recapSheet->setTitle(self::nextSheetTitle('Rekap', $usedSheetTitles));
-        self::fillRecapSheet($recapSheet, $records, $recapData, $satkerId, $userId);
+        self::fillRecapSheet($recapSheet, $records, $recapData, $satkerId, $userId, $titles);
 
         $spreadsheet->setActiveSheetIndex(0);
 
@@ -53,8 +60,9 @@ class KasusTemplateSpreadsheet
         Collection $penyelesaianColumns,
         ?int $satkerId,
         ?int $userId,
+        ?array $titles,
     ): void {
-        self::fillKopAndTitle($sheet, $records, $satkerId, $userId, false);
+        self::fillKopAndTitle($sheet, $records, $satkerId, $userId, false, $titles);
         $sheet->setCellValue('A6', 'JENIS KASUS: '.strtoupper($jenisKasus));
 
         $headerRow = 8;
@@ -137,8 +145,9 @@ class KasusTemplateSpreadsheet
         array $recapData,
         ?int $satkerId,
         ?int $userId,
+        ?array $titles,
     ): void {
-        self::fillKopAndTitle($sheet, $records, $satkerId, $userId, true);
+        self::fillKopAndTitle($sheet, $records, $satkerId, $userId, true, $titles);
 
         $headerRow = 8;
         $dataStartRow = 9;
@@ -228,9 +237,10 @@ class KasusTemplateSpreadsheet
         ?int $satkerId,
         ?int $userId,
         bool $useRecapTitle,
+        ?array $titles = null,
     ): void {
         $kop = ExportDocumentTemplate::kopSuratLines($userId, $satkerId);
-        $titles = ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId);
+        $titles ??= ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId);
 
         $sheet->setCellValue('A1', $kop[0] ?? '');
         $sheet->setCellValue('A2', $kop[1] ?? '');

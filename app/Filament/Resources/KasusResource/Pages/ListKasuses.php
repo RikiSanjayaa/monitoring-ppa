@@ -9,6 +9,7 @@ use App\Support\KasusTemplateSpreadsheet;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -44,7 +45,8 @@ class ListKasuses extends ListRecords
 
                     $satkerId = $this->resolveExportSatkerId($records);
                     $userId = Auth::id();
-                    $titles = ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId);
+                    $periodDate = $this->resolveExportPeriodDate();
+                    $titles = ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId, $periodDate);
 
                     $pdf = Pdf::loadView('exports.kasus-report', [
                         'records' => $records,
@@ -82,8 +84,10 @@ class ListKasuses extends ListRecords
 
                     $satkerId = $this->resolveExportSatkerId($records);
                     $userId = Auth::id();
+                    $periodDate = $this->resolveExportPeriodDate();
+                    $titles = ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId, $periodDate);
 
-                    $spreadsheet = KasusTemplateSpreadsheet::build($records, $satkerId, $userId);
+                    $spreadsheet = KasusTemplateSpreadsheet::build($records, $satkerId, $userId, $titles);
                     $fileName = 'kasus-'.now()->format('Ymd_His').'.xlsx';
 
                     return response()->streamDownload(function () use ($spreadsheet): void {
@@ -109,6 +113,34 @@ class ListKasuses extends ListRecords
 
         if ($satkerIds->count() === 1) {
             return (int) $satkerIds->first();
+        }
+
+        return null;
+    }
+
+    private function resolveExportPeriodDate(): ?Carbon
+    {
+        $filterState = (array) data_get($this->tableFilters, 'periode_tanggal', []);
+        $preset = data_get($filterState, 'preset');
+
+        if ($preset === 'bulan_ini') {
+            return now()->startOfMonth();
+        }
+
+        if ($preset === 'bulan_lalu') {
+            return now()->subMonthNoOverflow()->startOfMonth();
+        }
+
+        $fromDate = data_get($filterState, 'from_date');
+
+        if (is_string($fromDate) && $fromDate !== '') {
+            return Carbon::parse($fromDate)->startOfDay();
+        }
+
+        $toDate = data_get($filterState, 'to_date');
+
+        if (is_string($toDate) && $toDate !== '') {
+            return Carbon::parse($toDate)->startOfDay();
         }
 
         return null;

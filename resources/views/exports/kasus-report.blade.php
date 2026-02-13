@@ -78,6 +78,25 @@
             height: 12px;
         }
 
+        .detail-section {
+            page-break-inside: avoid;
+            break-inside: avoid-page;
+            margin: 8px 0 4px;
+        }
+
+        .detail-title {
+            margin: 0 0 4px;
+            font-weight: 700;
+        }
+
+        .detail-section table thead {
+            display: table-header-group;
+        }
+
+        .detail-section table tr {
+            page-break-inside: avoid;
+        }
+
         .signature {
             margin-top: 18px;
             width: 100%;
@@ -193,7 +212,8 @@
     @endphp
 
     @forelse ($recordsByJenis as $jenisKasus => $groupedRecords)
-        <div style="margin: 8px 0 4px; font-weight: 700;">{{ strtoupper($jenisKasus) }}</div>
+        <div class="detail-section">
+        <div class="detail-title">{{ strtoupper($jenisKasus) }}</div>
         <table>
             <thead>
                 <tr>
@@ -259,6 +279,7 @@
                 @endforeach
             </tbody>
         </table>
+        </div>
     @empty
         <table>
             <tbody>
