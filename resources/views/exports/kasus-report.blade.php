@@ -124,19 +124,25 @@
         }
 
         .rekap .ket {
-            width: 120px;
+            width: 90px;
         }
 
         .rekap .tp-pasal {
-            width: 170px;
+            width: 145px;
         }
 
         .rekap .jenis {
-            width: 85px;
+            width: 95px;
         }
 
         .rekap .num-col {
-            width: 56px;
+            width: 42px;
+        }
+
+        .rekap td:nth-child(2),
+        .rekap td:nth-child(3) {
+            overflow-wrap: anywhere;
+            word-break: break-word;
         }
 
         .vertical-head {
