@@ -29,6 +29,11 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
       - name: Run formatter check
         run: ./vendor/bin/pint --test
 
@@ -68,4 +73,3 @@ jobs:
           ssh "${HOMESERVER_USER}@${HOMESERVER_HOST}" \
             "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' bash -s" \
             < scripts/deploy-homeserver.sh
-
