@@ -31,3 +31,4 @@ if ! grep -qE '^APP_KEY=base64:' .env; then
 fi
 docker compose exec -T app php artisan migrate --force
 docker compose exec -T app php artisan optimize
+docker compose exec -T app php artisan filament:optimize
