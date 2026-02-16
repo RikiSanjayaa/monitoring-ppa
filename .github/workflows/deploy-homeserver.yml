@@ -54,10 +54,11 @@ jobs:
         with:
           authkey: ${{ secrets.TS_AUTHKEY }}
 
-      - name: Start SSH agent
-        uses: webfactory/ssh-agent@v0.9.0
-        with:
-          ssh-private-key: ${{ secrets.HOMESERVER_SSH_PRIVATE_KEY }}
+      - name: Prepare SSH key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.HOMESERVER_SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
 
       - name: Add homeserver host key
         run: |
@@ -70,6 +71,6 @@ jobs:
           HOMESERVER_USER: ${{ secrets.HOMESERVER_USER }}
           APP_DIR: ${{ secrets.HOMESERVER_APP_DIR }}
         run: |
-          ssh "${HOMESERVER_USER}@${HOMESERVER_HOST}" \
+          ssh -i ~/.ssh/id_deploy "${HOMESERVER_USER}@${HOMESERVER_HOST}" \
             "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' bash -s" \
             < scripts/deploy-homeserver.sh
