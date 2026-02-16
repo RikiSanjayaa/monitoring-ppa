@@ -1,10 +1,10 @@
 FROM php:8.3-fpm
 
-ARG UID=1000
-ARG GID=1000
+ARG HOST_UID=1000
+ARG HOST_GID=1000
 
-RUN groupmod -o -g "${GID}" www-data \
-    && usermod -o -u "${UID}" -g "${GID}" www-data
+RUN groupmod -o -g "${HOST_GID}" www-data \
+    && usermod -o -u "${HOST_UID}" -g "${HOST_GID}" www-data
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
