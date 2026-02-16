@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\KasusResource\Pages;
 
 use App\Filament\Resources\KasusResource;
+use App\Models\Kasus;
 use App\Support\ExportDocumentTemplate;
 use App\Support\KasusRecapSummary;
 use App\Support\KasusTemplateSpreadsheet;
@@ -29,6 +30,7 @@ class ListKasuses extends ListRecords
                 ->color('danger')
                 ->button()
                 ->action(function () {
+                    $totalKasusDatabase = Kasus::query()->count();
                     $records = (clone $this->getFilteredTableQuery())
                         ->with([
                             'satker:id,nama',
@@ -56,6 +58,7 @@ class ListKasuses extends ListRecords
                         'recapTitle' => $titles['recap'],
                         'signatureBlock' => ExportDocumentTemplate::signatureBlock($userId, $satkerId),
                         'recapData' => $recapData,
+                        'totalKasusDatabase' => $totalKasusDatabase,
                     ])->setPaper('a4', 'landscape');
 
                     return response()->streamDownload(
@@ -69,6 +72,7 @@ class ListKasuses extends ListRecords
                 ->color('success')
                 ->button()
                 ->action(function () {
+                    $totalKasusDatabase = Kasus::query()->count();
                     $records = (clone $this->getFilteredTableQuery())
                         ->with([
                             'satker:id,nama',
@@ -87,7 +91,7 @@ class ListKasuses extends ListRecords
                     $periodDate = $this->resolveExportPeriodDate();
                     $titles = ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId, $periodDate);
 
-                    $spreadsheet = KasusTemplateSpreadsheet::build($records, $satkerId, $userId, $titles);
+                    $spreadsheet = KasusTemplateSpreadsheet::build($records, $satkerId, $userId, $titles, $totalKasusDatabase);
                     $fileName = 'kasus-'.now()->format('Ymd_His').'.xlsx';
 
                     return response()->streamDownload(function () use ($spreadsheet): void {

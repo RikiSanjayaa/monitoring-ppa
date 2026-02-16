@@ -21,6 +21,7 @@ class KasusTemplateSpreadsheet
         ?int $satkerId = null,
         ?int $userId = null,
         ?array $titles = null,
+        ?int $totalKasusDatabase = null,
     ): Spreadsheet {
         $spreadsheet = new Spreadsheet;
         $recapData = KasusRecapSummary::fromCollection($records);
@@ -46,7 +47,7 @@ class KasusTemplateSpreadsheet
 
         $recapSheet = $spreadsheet->createSheet();
         $recapSheet->setTitle(self::nextSheetTitle('Rekap', $usedSheetTitles));
-        self::fillRecapSheet($recapSheet, $records, $recapData, $satkerId, $userId, $titles);
+        self::fillRecapSheet($recapSheet, $records, $recapData, $satkerId, $userId, $titles, $totalKasusDatabase);
 
         $spreadsheet->setActiveSheetIndex(0);
 
@@ -146,33 +147,61 @@ class KasusTemplateSpreadsheet
         ?int $satkerId,
         ?int $userId,
         ?array $titles,
+        ?int $totalKasusDatabase,
     ): void {
         self::fillKopAndTitle($sheet, $records, $satkerId, $userId, true, $titles);
 
-        $headerRow = 8;
-        $dataStartRow = 9;
+        $headerTopRow = 8;
+        $headerBottomRow = 9;
+        $dataStartRow = 10;
         $penyelesaianColumns = $recapData['penyelesaian_columns'];
+        $penyelesaianColumnCount = max(1, $penyelesaianColumns->count());
+        $penyelesaianStartColumnIndex = 9;
+        $penyelesaianEndColumnIndex = $penyelesaianStartColumnIndex + $penyelesaianColumnCount - 1;
+        $jmlColumnIndex = $penyelesaianEndColumnIndex + 1;
+        $ketColumnIndex = $jmlColumnIndex + 1;
 
-        $headers = [
-            'NO',
-            'JENIS TP',
-            'TP/PASAL',
-            'KORBAN',
-            'TERSANGKA',
-            'SAKSI',
-            'DOKUMEN/GIAT (LIDIK)',
-            'DOKUMEN/GIAT (SIDIK)',
-        ];
+        self::setCell($sheet, 1, $headerTopRow, 'NO');
+        self::setCell($sheet, 2, $headerTopRow, 'JENIS TP');
+        self::setCell($sheet, 3, $headerTopRow, 'TP/PASAL');
+        self::setCell($sheet, 4, $headerTopRow, 'JUMLAH');
+        self::setCell($sheet, 7, $headerTopRow, 'DOKUMEN/GIAT');
+        self::setCell($sheet, $penyelesaianStartColumnIndex, $headerTopRow, 'PENYELESAIAN PERKARA');
+        self::setCell($sheet, $jmlColumnIndex, $headerTopRow, 'JML');
+        self::setCell($sheet, $ketColumnIndex, $headerTopRow, 'KET');
 
-        foreach ($penyelesaianColumns as $column) {
-            $headers[] = strtoupper((string) $column['label']);
-        }
+        $sheet->mergeCells("A{$headerTopRow}:A{$headerBottomRow}");
+        $sheet->mergeCells("B{$headerTopRow}:B{$headerBottomRow}");
+        $sheet->mergeCells("C{$headerTopRow}:C{$headerBottomRow}");
+        $sheet->mergeCells("D{$headerTopRow}:F{$headerTopRow}");
+        $sheet->mergeCells("G{$headerTopRow}:H{$headerTopRow}");
+        $sheet->mergeCells(
+            Coordinate::stringFromColumnIndex($penyelesaianStartColumnIndex).$headerTopRow.':'.
+            Coordinate::stringFromColumnIndex($penyelesaianEndColumnIndex).$headerTopRow
+        );
+        $sheet->mergeCells(
+            Coordinate::stringFromColumnIndex($jmlColumnIndex).$headerTopRow.':'.
+            Coordinate::stringFromColumnIndex($jmlColumnIndex).$headerBottomRow
+        );
+        $sheet->mergeCells(
+            Coordinate::stringFromColumnIndex($ketColumnIndex).$headerTopRow.':'.
+            Coordinate::stringFromColumnIndex($ketColumnIndex).$headerBottomRow
+        );
 
-        $headers[] = 'JML';
-        $headers[] = 'KET';
+        self::setCell($sheet, 4, $headerBottomRow, 'KORBAN');
+        self::setCell($sheet, 5, $headerBottomRow, 'TERSANGKA');
+        self::setCell($sheet, 6, $headerBottomRow, 'SAKSI');
+        self::setCell($sheet, 7, $headerBottomRow, 'LIDIK');
+        self::setCell($sheet, 8, $headerBottomRow, 'SIDIK');
 
-        foreach ($headers as $index => $header) {
-            self::setCell($sheet, $index + 1, $headerRow, $header);
+        if ($penyelesaianColumns->isEmpty()) {
+            self::setCell($sheet, $penyelesaianStartColumnIndex, $headerBottomRow, '-');
+        } else {
+            $columnIndex = $penyelesaianStartColumnIndex;
+            foreach ($penyelesaianColumns as $column) {
+                self::setCell($sheet, $columnIndex, $headerBottomRow, strtoupper((string) $column['label']));
+                $columnIndex++;
+            }
         }
 
         $row = $dataStartRow;
@@ -186,19 +215,23 @@ class KasusTemplateSpreadsheet
             self::setCell($sheet, 7, $row, $group['lidik']);
             self::setCell($sheet, 8, $row, $group['sidik']);
 
-            $penyelesaianColumnIndex = 9;
-            foreach ($penyelesaianColumns as $column) {
-                self::setCell(
-                    $sheet,
-                    $penyelesaianColumnIndex,
-                    $row,
-                    (int) ($group['penyelesaian_counts'][$column['key']] ?? 0),
-                );
-                $penyelesaianColumnIndex++;
+            if ($penyelesaianColumns->isEmpty()) {
+                self::setCell($sheet, $penyelesaianStartColumnIndex, $row, 0);
+            } else {
+                $penyelesaianColumnIndex = $penyelesaianStartColumnIndex;
+                foreach ($penyelesaianColumns as $column) {
+                    self::setCell(
+                        $sheet,
+                        $penyelesaianColumnIndex,
+                        $row,
+                        (int) ($group['penyelesaian_counts'][$column['key']] ?? 0),
+                    );
+                    $penyelesaianColumnIndex++;
+                }
             }
 
-            self::setCell($sheet, $penyelesaianColumnIndex, $row, $group['jumlah']);
-            self::setCell($sheet, $penyelesaianColumnIndex + 1, $row, '');
+            self::setCell($sheet, $jmlColumnIndex, $row, $group['jumlah']);
+            self::setCell($sheet, $ketColumnIndex, $row, '');
             $row++;
         }
 
@@ -212,23 +245,50 @@ class KasusTemplateSpreadsheet
         self::setCell($sheet, 7, $totalRow, $totals['lidik']);
         self::setCell($sheet, 8, $totalRow, $totals['sidik']);
 
-        $penyelesaianColumnIndex = 9;
-        foreach ($penyelesaianColumns as $column) {
-            self::setCell(
-                $sheet,
-                $penyelesaianColumnIndex,
-                $totalRow,
-                (int) ($totals['penyelesaian_counts'][$column['key']] ?? 0),
-            );
-            $penyelesaianColumnIndex++;
+        if ($penyelesaianColumns->isEmpty()) {
+            self::setCell($sheet, $penyelesaianStartColumnIndex, $totalRow, 0);
+        } else {
+            $penyelesaianColumnIndex = $penyelesaianStartColumnIndex;
+            foreach ($penyelesaianColumns as $column) {
+                self::setCell(
+                    $sheet,
+                    $penyelesaianColumnIndex,
+                    $totalRow,
+                    (int) ($totals['penyelesaian_counts'][$column['key']] ?? 0),
+                );
+                $penyelesaianColumnIndex++;
+            }
         }
 
-        self::setCell($sheet, $penyelesaianColumnIndex, $totalRow, $totals['jumlah']);
-        self::setCell($sheet, $penyelesaianColumnIndex + 1, $totalRow, '');
+        self::setCell($sheet, $jmlColumnIndex, $totalRow, $totals['jumlah']);
+        self::setCell($sheet, $ketColumnIndex, $totalRow, '');
 
-        $lastColumnIndex = $penyelesaianColumnIndex + 1;
-        self::applyBasicTableStyle($sheet, $headerRow, $totalRow, $lastColumnIndex, false);
-        self::fillSignature($sheet, $satkerId, $userId, $totalRow + 2, $lastColumnIndex);
+        $totalPenyelesaianPerkara = (int) collect($totals['penyelesaian_counts'] ?? [])->sum();
+        $totalKasusKeseluruhan = (int) ($totalKasusDatabase ?? $records->count());
+        $persentasePenyelesaianPerkara = $totalKasusKeseluruhan > 0
+            ? number_format(($totalPenyelesaianPerkara / $totalKasusKeseluruhan) * 100, 2, ',', '.')
+            : '0,00';
+
+        $infoRow = $totalRow + 1;
+        $penyelesaianStartColumn = Coordinate::stringFromColumnIndex($penyelesaianStartColumnIndex);
+        $penyelesaianEndColumn = Coordinate::stringFromColumnIndex($penyelesaianEndColumnIndex);
+        $sheet->mergeCells("{$penyelesaianStartColumn}{$infoRow}:{$penyelesaianEndColumn}{$infoRow}");
+        self::setCell(
+            $sheet,
+            $penyelesaianStartColumnIndex,
+            $infoRow,
+            sprintf('TOTAL PENYELESAIAN: %d   PERSENTASE: %s%%', $totalPenyelesaianPerkara, $persentasePenyelesaianPerkara),
+        );
+
+        $lastColumnIndex = $ketColumnIndex;
+        self::applyBasicTableStyle($sheet, $headerTopRow, $infoRow, $lastColumnIndex, false, $headerBottomRow);
+        $sheet->getStyle("{$penyelesaianStartColumn}{$infoRow}:{$penyelesaianEndColumn}{$infoRow}")
+            ->getAlignment()
+            ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle("{$penyelesaianStartColumn}{$infoRow}:{$penyelesaianEndColumn}{$infoRow}")
+            ->getFont()
+            ->setBold(true);
+        self::fillSignature($sheet, $satkerId, $userId, $infoRow + 2, $lastColumnIndex);
     }
 
     private static function fillKopAndTitle(
@@ -270,12 +330,14 @@ class KasusTemplateSpreadsheet
         int $lastDataRow,
         int $lastColumnIndex,
         bool $isDetailSheet,
+        ?int $headerEndRow = null,
     ): void {
+        $headerEndRow ??= $headerRow;
         $lastColumn = Coordinate::stringFromColumnIndex($lastColumnIndex);
         $tableRange = "A{$headerRow}:{$lastColumn}{$lastDataRow}";
-        $headerRange = "A{$headerRow}:{$lastColumn}{$headerRow}";
+        $headerRange = "A{$headerRow}:{$lastColumn}{$headerEndRow}";
 
-        $sheet->freezePane('A'.($headerRow + 1));
+        $sheet->freezePane('A'.($headerEndRow + 1));
 
         $sheet->getStyle($tableRange)->applyFromArray([
             'borders' => [
@@ -320,7 +382,9 @@ class KasusTemplateSpreadsheet
             $sheet->getColumnDimension($columnLetter)->setWidth($width);
         }
 
-        $sheet->getRowDimension($headerRow)->setRowHeight(24);
+        for ($row = $headerRow; $row <= $headerEndRow; $row++) {
+            $sheet->getRowDimension($row)->setRowHeight(24);
+        }
     }
 
     private static function detailColumnWidths(int $lastColumnIndex): array

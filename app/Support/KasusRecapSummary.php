@@ -43,7 +43,7 @@ class KasusRecapSummary
                     'lidik' => $lidik,
                     'sidik' => $sidik,
                     'penyelesaian_counts' => $penyelesaianCounts,
-                    'jumlah' => $lidik + $sidik + array_sum($penyelesaianCounts),
+                    'jumlah' => array_sum($penyelesaianCounts),
                 ];
             })
             ->values();
