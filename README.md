@@ -66,13 +66,19 @@ php artisan migrate:fresh --seed
 5. Jalankan aplikasi:
 
 ```bash
-php artisan serve
+docker compose -f compose.dev.yaml up -d --build
 ```
 
 Akses:
 
 - `/` langsung ke panel Filament
 - `/login` untuk halaman login Filament (jika belum autentikasi)
+
+Alternatif tanpa Docker tetap bisa:
+
+```bash
+php artisan serve
+```
 
 ## Akun Default Seeder
 
@@ -268,7 +274,13 @@ Alur:
 2. GitHub Actions menjalankan `pint --test` dan `php artisan test`.
 3. Jika lolos, action terkoneksi ke Tailnet lewat Tailscale.
 4. Action SSH ke homeserver dan menjalankan `scripts/deploy-homeserver.sh`.
-5. Script deploy akan pull branch terbaru, menjalankan `docker compose up -d --build`, lalu `composer install` dan command artisan penting.
+5. Script deploy akan pull branch terbaru, menjalankan `docker compose -f compose.prod.yaml up -d --no-build`, lalu `composer install` dan command artisan penting.
+
+### File Compose yang dipakai
+
+- Development lokal: `compose.dev.yaml`
+- Production deploy: `compose.prod.yaml`
+- Backward compatibility lokal: `docker-compose.yml` (setara dev)
 
 ### Secrets GitHub yang wajib
 
@@ -283,6 +295,21 @@ Alur:
 - Repo ini sudah di-clone pada `HOMESERVER_APP_DIR`.
 - Docker + Docker Compose plugin tersedia.
 - File `.env` aplikasi sudah dikonfigurasi untuk environment server.
+
+### Manual command ringkas
+
+Development:
+
+```bash
+docker compose -f compose.dev.yaml up -d --build
+```
+
+Production-like lokal:
+
+```bash
+HOST_UID=$(id -u) HOST_GID=$(id -g) docker compose -f compose.prod.yaml build app
+docker compose -f compose.prod.yaml up -d --no-build
+```
 
 - `SatkerScope` membatasi query model `Kasus` dan `Petugas` untuk user `admin`.
 - Kebijakan akses (policies) diterapkan pada seluruh resource Filament.

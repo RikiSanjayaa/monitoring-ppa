@@ -78,10 +78,11 @@ jobs:
           HOMESERVER_USER: ${{ secrets.HOMESERVER_USER }}
           APP_DIR: ${{ secrets.HOMESERVER_APP_DIR }}
           FORCE_REBUILD: ${{ inputs.force_rebuild }}
+          COMPOSE_FILE_PATH: compose.prod.yaml
         run: |
           ssh -i ~/.ssh/id_deploy \
             -o StrictHostKeyChecking=accept-new \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${HOMESERVER_USER}@${HOMESERVER_HOST}" \
-            "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' FORCE_REBUILD='${FORCE_REBUILD}' bash -s" \
+            "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' FORCE_REBUILD='${FORCE_REBUILD}' COMPOSE_FILE_PATH='${COMPOSE_FILE_PATH}' bash -s" \
             < scripts/deploy-homeserver.sh

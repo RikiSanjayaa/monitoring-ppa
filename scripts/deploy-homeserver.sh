@@ -5,6 +5,7 @@ set -euo pipefail
 APP_DIR="${APP_DIR:-/opt/monitoring-ppa}"
 BRANCH="${BRANCH:-main}"
 FORCE_REBUILD="${FORCE_REBUILD:-0}"
+COMPOSE_FILE_PATH="${COMPOSE_FILE_PATH:-compose.prod.yaml}"
 
 if [[ ! -d "${APP_DIR}" ]]; then
     echo "APP_DIR does not exist: ${APP_DIR}" >&2
@@ -12,6 +13,15 @@ if [[ ! -d "${APP_DIR}" ]]; then
 fi
 
 cd "${APP_DIR}"
+
+if [[ ! -f "${COMPOSE_FILE_PATH}" ]]; then
+    echo "Compose file not found: ${COMPOSE_FILE_PATH}" >&2
+    exit 1
+fi
+
+compose() {
+    docker compose -f "${COMPOSE_FILE_PATH}" "$@"
+}
 
 git config --global --add safe.directory "${APP_DIR}"
 git fetch origin "${BRANCH}"
@@ -25,25 +35,17 @@ fi
 LOCAL_UID="$(id -u)"
 LOCAL_GID="$(id -g)"
 
-NEED_BUILD=0
-
 if [[ "${FORCE_REBUILD}" == "1" || "${FORCE_REBUILD}" == "true" ]]; then
-    NEED_BUILD=1
+    HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" compose build app
 fi
 
-if [[ -z "$(docker compose images -q app 2>/dev/null)" ]]; then
-    NEED_BUILD=1
-fi
+HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" compose up -d --no-build
 
-if [[ "${NEED_BUILD}" == "1" ]]; then
-    HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" docker compose build app
-fi
-
-HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" docker compose up -d --no-build
-docker compose exec -T app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+compose exec -T --user www-data -e HOME=/tmp app git config --global --add safe.directory /var/www/html || true
+compose exec -T --user www-data -e HOME=/tmp app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 if ! grep -qE '^APP_KEY=base64:' .env; then
-    docker compose exec -T app php artisan key:generate --force
+    compose exec -T --user www-data -e HOME=/tmp app php artisan key:generate --force
 fi
-docker compose exec -T app php artisan migrate --force
-docker compose exec -T app php artisan optimize
-docker compose exec -T app php artisan filament:optimize
+compose exec -T --user www-data -e HOME=/tmp app php artisan migrate --force
+compose exec -T --user www-data -e HOME=/tmp app php artisan optimize
+compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize
