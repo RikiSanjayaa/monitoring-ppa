@@ -21,12 +21,10 @@ if [[ ! -f .env ]]; then
     cp .env.example .env
 fi
 
-export UID
-UID="$(id -u)"
-export GID
-GID="$(id -g)"
+LOCAL_UID="$(id -u)"
+LOCAL_GID="$(id -g)"
 
-docker compose up -d --build
+UID="${LOCAL_UID}" GID="${LOCAL_GID}" docker compose up -d --build
 docker compose exec -T app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 if ! grep -qE '^APP_KEY=base64:' .env; then
     docker compose exec -T app php artisan key:generate --force
