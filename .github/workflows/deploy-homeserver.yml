@@ -63,7 +63,8 @@ jobs:
       - name: Add homeserver host key
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H "${{ secrets.HOMESERVER_HOST }}" >> ~/.ssh/known_hosts
+          touch ~/.ssh/known_hosts
+          ssh-keyscan -H "${{ secrets.HOMESERVER_HOST }}" >> ~/.ssh/known_hosts || true
 
       - name: Deploy via SSH
         env:
@@ -71,6 +72,9 @@ jobs:
           HOMESERVER_USER: ${{ secrets.HOMESERVER_USER }}
           APP_DIR: ${{ secrets.HOMESERVER_APP_DIR }}
         run: |
-          ssh -i ~/.ssh/id_deploy "${HOMESERVER_USER}@${HOMESERVER_HOST}" \
+          ssh -i ~/.ssh/id_deploy \
+            -o StrictHostKeyChecking=accept-new \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${HOMESERVER_USER}@${HOMESERVER_HOST}" \
             "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' bash -s" \
             < scripts/deploy-homeserver.sh
