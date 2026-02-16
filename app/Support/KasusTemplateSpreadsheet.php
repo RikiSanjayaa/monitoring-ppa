@@ -77,8 +77,8 @@ class KasusTemplateSpreadsheet
             6 => 'KORBAN',
             7 => 'TERSANGKA',
             8 => 'HUB. TERSANGKA DENGAN KORBAN',
-            9 => 'LIDIK',
-            10 => 'SIDIK',
+            9 => 'DOKUMEN/GIAT (LIDIK)',
+            10 => 'DOKUMEN/GIAT (SIDIK)',
         ];
 
         foreach ($staticHeaders as $columnIndex => $label) {
@@ -160,8 +160,8 @@ class KasusTemplateSpreadsheet
             'KORBAN',
             'TERSANGKA',
             'SAKSI',
-            'LIDIK',
-            'SIDIK',
+            'DOKUMEN/GIAT (LIDIK)',
+            'DOKUMEN/GIAT (SIDIK)',
         ];
 
         foreach ($penyelesaianColumns as $column) {
