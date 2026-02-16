@@ -258,6 +258,32 @@ php artisan queue:restart
 
 ## Catatan
 
+## CI/CD Homeserver (Tailscale + Docker Compose)
+
+Workflow deploy tersedia di `.github/workflows/deploy-homeserver.yml`.
+
+Alur:
+
+1. Push ke branch `main`.
+2. GitHub Actions menjalankan `pint --test` dan `php artisan test`.
+3. Jika lolos, action terkoneksi ke Tailnet lewat Tailscale.
+4. Action SSH ke homeserver dan menjalankan `scripts/deploy-homeserver.sh`.
+5. Script deploy akan pull branch terbaru, menjalankan `docker compose up -d --build`, lalu `composer install` dan command artisan penting.
+
+### Secrets GitHub yang wajib
+
+- `TS_AUTHKEY`: auth key Tailscale untuk GitHub Actions.
+- `HOMESERVER_HOST`: IP/hostname Tailscale homeserver (contoh `100.x.x.x` atau `server.tailnet.ts.net`).
+- `HOMESERVER_USER`: user SSH di homeserver.
+- `HOMESERVER_SSH_PRIVATE_KEY`: private key untuk SSH ke homeserver.
+- `HOMESERVER_APP_DIR`: path project di homeserver (contoh `/opt/monitoring-ppa`).
+
+### Prasyarat di homeserver
+
+- Repo ini sudah di-clone pada `HOMESERVER_APP_DIR`.
+- Docker + Docker Compose plugin tersedia.
+- File `.env` aplikasi sudah dikonfigurasi untuk environment server.
+
 - `SatkerScope` membatasi query model `Kasus` dan `Petugas` untuk user `admin`.
 - Kebijakan akses (policies) diterapkan pada seluruh resource Filament.
 - Nilai `Limpah` dimasukkan sebagai opsi `penyelesaian` agar muncul pada ringkasan dan export.

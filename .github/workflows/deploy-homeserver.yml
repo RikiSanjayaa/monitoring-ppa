@@ -1,0 +1,71 @@
+name: Deploy Homeserver
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-homeserver
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, intl, pdo_sqlite, dom, fileinfo
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Run formatter check
+        run: ./vendor/bin/pint --test
+
+      - name: Run tests
+        run: php artisan test
+
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+
+      - name: Start SSH agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.HOMESERVER_SSH_PRIVATE_KEY }}
+
+      - name: Add homeserver host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.HOMESERVER_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Deploy via SSH
+        env:
+          HOMESERVER_HOST: ${{ secrets.HOMESERVER_HOST }}
+          HOMESERVER_USER: ${{ secrets.HOMESERVER_USER }}
+          APP_DIR: ${{ secrets.HOMESERVER_APP_DIR }}
+        run: |
+          ssh "${HOMESERVER_USER}@${HOMESERVER_HOST}" \
+            "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' bash -s" \
+            < scripts/deploy-homeserver.sh
+
