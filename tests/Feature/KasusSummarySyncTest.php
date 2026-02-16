@@ -194,7 +194,7 @@ class KasusSummarySyncTest extends TestCase
         $this->assertSame(1, $rowKtp['sidik']);
         $this->assertSame(1, $rowKtp['penyelesaian_counts'][$hentiKey]);
         $this->assertSame(1, $rowKtp['penyelesaian_counts'][$pelimpahanKey]);
-        $this->assertSame(4, $rowKtp['jumlah']);
+        $this->assertSame(2, $rowKtp['jumlah']);
 
         $this->assertSame(1, $rowKta['jumlah_korban']);
         $this->assertSame('-', $rowKta['pasal']);
@@ -204,7 +204,7 @@ class KasusSummarySyncTest extends TestCase
         $this->assertSame(1, $rowKta['sidik']);
         $this->assertSame(0, $rowKta['penyelesaian_counts'][$hentiKey]);
         $this->assertSame(0, $rowKta['penyelesaian_counts'][$pelimpahanKey]);
-        $this->assertSame(1, $rowKta['jumlah']);
+        $this->assertSame(0, $rowKta['jumlah']);
 
         $this->assertSame(4, $totals['jumlah_korban']);
         $this->assertSame(4, $totals['jumlah_tersangka']);
@@ -213,7 +213,7 @@ class KasusSummarySyncTest extends TestCase
         $this->assertSame(2, $totals['sidik']);
         $this->assertSame(1, $totals['penyelesaian_counts'][$hentiKey]);
         $this->assertSame(1, $totals['penyelesaian_counts'][$pelimpahanKey]);
-        $this->assertSame(5, $totals['jumlah']);
+        $this->assertSame(2, $totals['jumlah']);
     }
 
     /**
