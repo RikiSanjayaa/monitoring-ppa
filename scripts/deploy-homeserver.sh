@@ -4,6 +4,7 @@ set -euo pipefail
 
 APP_DIR="${APP_DIR:-/opt/monitoring-ppa}"
 BRANCH="${BRANCH:-main}"
+FORCE_REBUILD="${FORCE_REBUILD:-0}"
 
 if [[ ! -d "${APP_DIR}" ]]; then
     echo "APP_DIR does not exist: ${APP_DIR}" >&2
@@ -24,7 +25,21 @@ fi
 LOCAL_UID="$(id -u)"
 LOCAL_GID="$(id -g)"
 
-HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" docker compose up -d --build
+NEED_BUILD=0
+
+if [[ "${FORCE_REBUILD}" == "1" || "${FORCE_REBUILD}" == "true" ]]; then
+    NEED_BUILD=1
+fi
+
+if [[ -z "$(docker compose images -q app 2>/dev/null)" ]]; then
+    NEED_BUILD=1
+fi
+
+if [[ "${NEED_BUILD}" == "1" ]]; then
+    HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" docker compose build app
+fi
+
+HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" docker compose up -d --no-build
 docker compose exec -T app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 if ! grep -qE '^APP_KEY=base64:' .env; then
     docker compose exec -T app php artisan key:generate --force

@@ -6,8 +6,8 @@ ARG HOST_GID=1000
 RUN groupmod -o -g "${HOST_GID}" www-data \
     && usermod -o -u "${HOST_UID}" -g "${HOST_GID}" www-data
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
+RUN apt-get update -o Acquire::Retries=5 -o Acquire::http::Timeout=30 \
+    && apt-get install -y --no-install-recommends -o Acquire::Retries=5 -o Acquire::http::Timeout=30 \
     git \
     curl \
     unzip \

@@ -5,6 +5,12 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: Force Docker app image rebuild
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-homeserver
@@ -71,10 +77,11 @@ jobs:
           HOMESERVER_HOST: ${{ secrets.HOMESERVER_HOST }}
           HOMESERVER_USER: ${{ secrets.HOMESERVER_USER }}
           APP_DIR: ${{ secrets.HOMESERVER_APP_DIR }}
+          FORCE_REBUILD: ${{ inputs.force_rebuild }}
         run: |
           ssh -i ~/.ssh/id_deploy \
             -o StrictHostKeyChecking=accept-new \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${HOMESERVER_USER}@${HOMESERVER_HOST}" \
-            "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' bash -s" \
+            "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' FORCE_REBUILD='${FORCE_REBUILD}' bash -s" \
             < scripts/deploy-homeserver.sh
