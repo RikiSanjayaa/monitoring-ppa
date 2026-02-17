@@ -8,10 +8,11 @@ services:
         HOST_UID: ${HOST_UID:-1000}
         HOST_GID: ${HOST_GID:-1000}
     working_dir: /var/www/html
+    environment:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: /var/www/html/database/database.sqlite
     volumes:
       - ./:/var/www/html
-    depends_on:
-      - db
     restart: unless-stopped
 
   web:
@@ -24,19 +25,3 @@ services:
     depends_on:
       - app
     restart: unless-stopped
-
-  db:
-    image: mysql:8.0
-    environment:
-      MYSQL_DATABASE: ${DB_DATABASE:-monitoring_ppa}
-      MYSQL_USER: ${DB_USERNAME:-monitoring}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-monitoring}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
-    volumes:
-      - monitoring_ppa_db_data:/var/lib/mysql
-    command: --default-authentication-plugin=mysql_native_password
-    restart: unless-stopped
-
-volumes:
-  monitoring_ppa_db_data:
-
