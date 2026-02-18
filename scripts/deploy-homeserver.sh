@@ -34,8 +34,12 @@ fi
 
 LOCAL_UID="$(id -u)"
 LOCAL_GID="$(id -g)"
+APP_IMAGE="${COMPOSE_PROJECT_NAME:-monitoring-ppa}-app:latest"
 
 if [[ "${FORCE_REBUILD}" == "1" || "${FORCE_REBUILD}" == "true" ]]; then
+    HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" compose build app
+elif ! docker image inspect "${APP_IMAGE}" > /dev/null 2>&1; then
+    echo "Image ${APP_IMAGE} not found. Building app image first..."
     HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" compose build app
 fi
 

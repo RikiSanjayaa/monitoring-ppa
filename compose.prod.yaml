@@ -1,5 +1,6 @@
 services:
   app:
+    image: "${COMPOSE_PROJECT_NAME:-monitoring-ppa}-app:latest"
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -16,13 +17,7 @@ services:
     restart: unless-stopped
 
   queue:
-    build:
-      context: .
-      dockerfile: docker/php/Dockerfile
-      network: host
-      args:
-        HOST_UID: ${HOST_UID:-1000}
-        HOST_GID: ${HOST_GID:-1000}
+    image: "${COMPOSE_PROJECT_NAME:-monitoring-ppa}-app:latest"
     working_dir: /var/www/html
     command: php artisan queue:work --queue=default --sleep=3 --tries=3 --timeout=120
     environment:
