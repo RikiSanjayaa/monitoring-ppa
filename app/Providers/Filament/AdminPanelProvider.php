@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Filament\Pages\Dashboard;
+use App\Filament\Resources\KasusResource\Pages\ListKasuses;
+use App\Filament\Resources\PetugasResource\Pages\ListPetugas;
 use Filament\Facades\Filament;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -11,6 +13,7 @@ use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Tables\View\TablesRenderHook;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -38,6 +41,28 @@ class AdminPanelProvider extends PanelProvider
                 fn (): string => view('filament.hooks.topbar-greeting', [
                     'user' => Filament::auth()->user(),
                 ])->render(),
+            )
+            ->renderHook(
+                TablesRenderHook::TOOLBAR_SEARCH_BEFORE,
+                fn (): string => <<<'HTML'
+                    <style>
+                        @media (min-width: 1024px) {
+                            .fi-resource-kasus .fi-ta-header-toolbar .fi-ta-search-field,
+                            .fi-resource-petugas .fi-ta-header-toolbar .fi-ta-search-field {
+                                width: 34rem;
+                            }
+
+                            .fi-resource-kasus .fi-ta-header-toolbar .fi-ta-search-field .fi-input-wrp,
+                            .fi-resource-petugas .fi-ta-header-toolbar .fi-ta-search-field .fi-input-wrp {
+                                width: 100%;
+                            }
+                        }
+                    </style>
+                HTML,
+                scopes: [
+                    ListKasuses::class,
+                    ListPetugas::class,
+                ],
             )
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')

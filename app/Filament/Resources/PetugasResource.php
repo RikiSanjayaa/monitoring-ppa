@@ -98,7 +98,8 @@ class PetugasResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->searchPlaceholder('Cari berdasarkan nama/NRP/pangkat/satker');
     }
 
     public static function getPages(): array
