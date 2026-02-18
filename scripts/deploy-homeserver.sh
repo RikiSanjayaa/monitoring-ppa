@@ -51,6 +51,8 @@ if ! grep -qE '^APP_KEY=base64:' .env; then
     compose exec -T --user www-data -e HOME=/tmp app php artisan key:generate --force
 fi
 compose exec -T --user www-data -e HOME=/tmp app php artisan migrate --force
+compose exec -T --user www-data -e HOME=/tmp app php artisan optimize:clear
+compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize-clear
 compose exec -T --user www-data -e HOME=/tmp app php artisan optimize
 compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize
 compose exec -T --user www-data -e HOME=/tmp app php artisan queue:restart
