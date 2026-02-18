@@ -2,15 +2,13 @@
 
 namespace App\Observers;
 
-use App\Enums\UserRole;
 use App\Filament\Resources\KasusResource;
 use App\Models\Kasus;
-use App\Models\User;
 use App\Support\AuditChangeFormatter;
 use App\Support\AuditLogger;
-use Filament\Notifications\Actions\Action;
-use Filament\Notifications\Notification;
+use App\Support\Notifications\MonitoringDatabaseNotifier;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 
 class KasusObserver
 {
@@ -34,6 +32,16 @@ class KasusObserver
             summary: sprintf('Kasus %s dibuat.', $kasus->nomor_lp),
             auditable: $kasus,
             satkerId: $kasus->satker_id,
+        );
+
+        MonitoringDatabaseNotifier::send(
+            title: 'Data Kasus',
+            body: sprintf('Kasus %s dibuat.', $kasus->nomor_lp),
+            level: 'success',
+            satkerId: $kasus->satker_id,
+            actorId: Auth::id(),
+            actionUrl: KasusResource::getUrl('view', ['record' => $kasus], panel: 'admin'),
+            actionLabel: 'Lihat Kasus',
         );
     }
 
@@ -61,11 +69,15 @@ class KasusObserver
             meta: ['important_fields_changed' => $importantChanged],
         );
 
-        if (! $importantChanged) {
-            return;
-        }
-
-        $this->sendImportantChangeNotification($kasus);
+        MonitoringDatabaseNotifier::send(
+            title: 'Data Kasus',
+            body: sprintf('Kasus %s diperbarui.', $kasus->nomor_lp),
+            level: 'warning',
+            satkerId: $kasus->satker_id,
+            actorId: Auth::id(),
+            actionUrl: KasusResource::getUrl('view', ['record' => $kasus], panel: 'admin'),
+            actionLabel: 'Lihat Kasus',
+        );
     }
 
     public function deleted(Kasus $kasus): void
@@ -77,33 +89,15 @@ class KasusObserver
             auditable: null,
             satkerId: $kasus->satker_id,
         );
-    }
 
-    private function sendImportantChangeNotification(Kasus $kasus): void
-    {
-        $recipients = User::query()
-            ->where(function ($query) use ($kasus): void {
-                $query->where('role', UserRole::SuperAdmin->value)
-                    ->orWhere(function ($inner) use ($kasus): void {
-                        $inner->where('role', UserRole::Admin->value)
-                            ->where('satker_id', $kasus->satker_id);
-                    });
-            })
-            ->get();
-
-        if ($recipients->isEmpty()) {
-            return;
-        }
-
-        Notification::make()
-            ->title('Perubahan penting data kasus')
-            ->body(sprintf('Kasus %s mengalami perubahan pada field penting.', $kasus->nomor_lp))
-            ->warning()
-            ->actions([
-                Action::make('view')
-                    ->label('Lihat Kasus')
-                    ->url(KasusResource::getUrl('view', ['record' => $kasus])),
-            ])
-            ->sendToDatabase($recipients);
+        MonitoringDatabaseNotifier::send(
+            title: 'Data Kasus',
+            body: sprintf('Kasus %s dihapus.', $kasus->nomor_lp),
+            level: 'danger',
+            satkerId: $kasus->satker_id,
+            actorId: Auth::id(),
+            actionUrl: KasusResource::getUrl(panel: 'admin'),
+            actionLabel: 'Lihat Daftar Kasus',
+        );
     }
 }

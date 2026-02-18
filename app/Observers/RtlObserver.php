@@ -2,11 +2,14 @@
 
 namespace App\Observers;
 
+use App\Filament\Resources\KasusResource;
 use App\Models\Kasus;
 use App\Models\Rtl;
 use App\Support\AuditChangeFormatter;
 use App\Support\AuditLogger;
+use App\Support\Notifications\MonitoringDatabaseNotifier;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Auth;
 
 class RtlObserver
 {
@@ -20,6 +23,13 @@ class RtlObserver
             summary: sprintf('RTL kasus %s ditambahkan.', $kasus?->nomor_lp ?? '#'.$rtl->kasus_id),
             auditable: $rtl,
             satkerId: $kasus?->satker_id,
+        );
+
+        $this->sendNotification(
+            rtl: $rtl,
+            kasus: $kasus,
+            body: sprintf('RTL pada kasus %s ditambahkan.', $kasus?->nomor_lp ?? '#'.$rtl->kasus_id),
+            level: 'success',
         );
     }
 
@@ -41,6 +51,13 @@ class RtlObserver
             satkerId: $kasus?->satker_id,
             changes: AuditChangeFormatter::format($rtl, $changes),
         );
+
+        $this->sendNotification(
+            rtl: $rtl,
+            kasus: $kasus,
+            body: sprintf('RTL pada kasus %s diperbarui.', $kasus?->nomor_lp ?? '#'.$rtl->kasus_id),
+            level: 'warning',
+        );
     }
 
     public function deleted(Rtl $rtl): void
@@ -54,10 +71,30 @@ class RtlObserver
             auditable: null,
             satkerId: $kasus?->satker_id,
         );
+
+        $this->sendNotification(
+            rtl: $rtl,
+            kasus: $kasus,
+            body: sprintf('RTL pada kasus %s dihapus.', $kasus?->nomor_lp ?? '#'.$rtl->kasus_id),
+            level: 'danger',
+        );
     }
 
     private function resolveKasus(Rtl $rtl): ?Kasus
     {
         return $rtl->kasus()->withoutGlobalScopes()->first();
+    }
+
+    private function sendNotification(Rtl $rtl, ?Kasus $kasus, string $body, string $level): void
+    {
+        MonitoringDatabaseNotifier::send(
+            title: 'Timeline RTL',
+            body: $body,
+            level: $level,
+            satkerId: $kasus?->satker_id,
+            actorId: Auth::id(),
+            actionUrl: $kasus ? KasusResource::getUrl('view', ['record' => $kasus], panel: 'admin') : KasusResource::getUrl(panel: 'admin'),
+            actionLabel: $kasus ? 'Lihat Kasus' : 'Lihat Daftar Kasus',
+        );
     }
 }

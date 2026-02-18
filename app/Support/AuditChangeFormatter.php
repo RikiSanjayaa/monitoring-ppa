@@ -13,6 +13,7 @@ use App\Models\Petugas;
 use App\Models\Rtl;
 use App\Models\Satker;
 use Illuminate\Database\Eloquent\Model;
+use UnitEnum;
 
 class AuditChangeFormatter
 {
@@ -95,6 +96,10 @@ class AuditChangeFormatter
     {
         if ($value === null || $value === '') {
             return '-';
+        }
+
+        if ($value instanceof UnitEnum) {
+            $value = $value instanceof \BackedEnum ? $value->value : $value->name;
         }
 
         if ($field === 'satker_id') {
