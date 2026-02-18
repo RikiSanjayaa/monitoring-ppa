@@ -79,14 +79,29 @@
         }
 
         .detail-section {
-            page-break-inside: avoid;
-            break-inside: avoid-page;
+            page-break-inside: auto;
+            break-inside: auto;
             margin: 8px 0 4px;
+        }
+
+        .main-title-caption {
+            caption-side: top;
+            text-align: center;
+            font-weight: 700;
+            margin: 8px 0;
+            text-transform: uppercase;
+            page-break-after: avoid;
+        }
+
+        .main-title-caption .detail-line {
+            margin-top: 4px;
+            text-align: left;
         }
 
         .detail-title {
             margin: 0 0 4px;
             font-weight: 700;
+            page-break-after: avoid;
         }
 
         .detail-section table thead {
@@ -223,8 +238,6 @@
         <hr>
     </div>
 
-    <div class="title">{{ $mainTitle }}</div>
-
     @php
         $recordsByJenis = $records->groupBy(fn($record) => $record->perkara?->nama ?? 'Lainnya');
         $recapData = $recapData ?? [
@@ -259,8 +272,16 @@
 
     @forelse ($recordsByJenis as $jenisKasus => $groupedRecords)
         <div class="detail-section">
-            <div class="detail-title">{{ strtoupper($jenisKasus) }}</div>
+            @if (! $loop->first)
+                <div class="detail-title">{{ strtoupper($jenisKasus) }}</div>
+            @endif
             <table>
+                @if ($loop->first)
+                    <caption class="main-title-caption">
+                        <div>{{ $mainTitle }}</div>
+                        <div class="detail-line">{{ strtoupper($jenisKasus) }}</div>
+                    </caption>
+                @endif
                 <thead>
                     <tr>
                         <th rowspan="2" class="num">NO</th>
@@ -347,6 +368,7 @@
             </table>
         </div>
     @empty
+        <div class="title">{{ $mainTitle }}</div>
         <table>
             <tbody>
                 <tr>
