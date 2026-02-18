@@ -49,3 +49,4 @@ fi
 compose exec -T --user www-data -e HOME=/tmp app php artisan migrate --force
 compose exec -T --user www-data -e HOME=/tmp app php artisan optimize
 compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize
+compose exec -T --user www-data -e HOME=/tmp app php artisan queue:restart

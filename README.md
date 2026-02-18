@@ -149,6 +149,31 @@ Lalu atur minimal ini di `.env`:
 - kredensial database (`DB_*`)
 - mail/queue sesuai kebutuhan
 
+Konfigurasi mail (Resend) yang dipakai aplikasi:
+
+```env
+MAIL_MAILER=resend
+MAIL_FROM_ADDRESS=noreply@domain-anda.com
+MAIL_FROM_NAME="${APP_NAME}"
+RESEND_API_KEY=re_xxxxxxxxx
+```
+
+Catatan penting:
+
+- `MAIL_FROM_ADDRESS` harus memakai domain yang sudah diverifikasi di Resend.
+- Untuk testing cepat bisa gunakan `onboarding@resend.dev`.
+- Hindari sender seperti `@gmail.com` karena akan ditolak oleh Resend bila domain tidak terverifikasi.
+
+Konfigurasi queue yang disarankan:
+
+```env
+QUEUE_CONNECTION=database
+```
+
+Alasan:
+
+- Email reset password berjalan via queue, jadi worker wajib aktif di production.
+
 ### 4) Migrasi database + link storage
 
 ```bash
@@ -242,6 +267,7 @@ sudo chmod -R 775 storage bootstrap/cache
 ```
 
 - Queue worker via Supervisor/systemd bila `QUEUE_CONNECTION` bukan `sync`.
+- Jika deploy via Docker Compose (`compose.prod.yaml`), service `queue` sudah menjalankan `php artisan queue:work`.
 
 ### 9) Buat akun admin Filament
 
