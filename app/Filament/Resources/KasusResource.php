@@ -54,8 +54,8 @@ class KasusResource extends Resource
                             ->required()
                             ->searchable()
                             ->preload()
-                            ->default(fn(): ?int => Auth::user()?->satker_id)
-                            ->disabled(fn(): bool => Auth::user()?->isAdmin() ?? false)
+                            ->default(fn (): ?int => Auth::user()?->satker_id)
+                            ->disabled(fn (): bool => Auth::user()?->isAdmin() ?? false)
                             ->dehydrated(true),
                         Forms\Components\TextInput::make('nomor_lp')
                             ->label('Nomor LP')
@@ -242,8 +242,8 @@ class KasusResource extends Resource
                         Infolists\Components\TextEntry::make('dokumen_status')
                             ->label(static::mutedLabel('Dokumen/Giat'))
                             ->badge()
-                            ->formatStateUsing(fn($state): string => strtoupper((string) ($state?->value ?? $state)))
-                            ->color(fn($state): string => ($state?->value ?? $state) === DokumenStatus::Sidik->value ? 'warning' : 'info'),
+                            ->formatStateUsing(fn ($state): string => strtoupper((string) ($state?->value ?? $state)))
+                            ->color(fn ($state): string => ($state?->value ?? $state) === DokumenStatus::Sidik->value ? 'warning' : 'info'),
                         Infolists\Components\TextEntry::make('perkara.nama')
                             ->label(static::mutedLabel('Jenis Kasus'))
                             ->badge()
@@ -263,7 +263,7 @@ class KasusResource extends Resource
                             ->default('-'),
                         Infolists\Components\TextEntry::make('petugas_cards')
                             ->label(static::mutedLabel('Petugas Penanganan'))
-                            ->state(fn(Kasus $record): string => static::petugasCardsHtml($record))
+                            ->state(fn (Kasus $record): string => static::petugasCardsHtml($record))
                             ->html()
                             ->columnSpanFull(),
                     ])
@@ -272,19 +272,19 @@ class KasusResource extends Resource
                     ->schema([
                         Infolists\Components\TextEntry::make('proses_pidana')
                             ->label(static::mutedLabel('Proses Pidana'))
-                            ->formatStateUsing(fn(?string $state): string => static::narrativeHtml($state))
+                            ->formatStateUsing(fn (?string $state): string => static::narrativeHtml($state))
                             ->html()
                             ->default('-')
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('kronologi_kejadian')
                             ->label(static::mutedLabel('Kronologi Kejadian'))
-                            ->formatStateUsing(fn(?string $state): string => static::narrativeHtml($state))
+                            ->formatStateUsing(fn (?string $state): string => static::narrativeHtml($state))
                             ->html()
                             ->default('-')
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('laporan_polisi')
                             ->label(static::mutedLabel('Laporan Polisi'))
-                            ->formatStateUsing(fn(?string $state): string => static::narrativeHtml($state))
+                            ->formatStateUsing(fn (?string $state): string => static::narrativeHtml($state))
                             ->html()
                             ->default('-')
                             ->columnSpanFull(),
@@ -294,12 +294,12 @@ class KasusResource extends Resource
                     ->schema([
                         Infolists\Components\TextEntry::make('kronologi_kejadian_file')
                             ->label('Lampiran Kronologi Kejadian')
-                            ->formatStateUsing(fn(?string $state): string => static::attachmentPreviewHtml($state))
+                            ->formatStateUsing(fn (?string $state): string => static::attachmentPreviewHtml($state))
                             ->html()
                             ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('laporan_polisi_file')
                             ->label('Lampiran Laporan Polisi')
-                            ->formatStateUsing(fn(?string $state): string => static::attachmentPreviewHtml($state))
+                            ->formatStateUsing(fn (?string $state): string => static::attachmentPreviewHtml($state))
                             ->html()
                             ->columnSpanFull(),
                     ]),
@@ -313,7 +313,7 @@ class KasusResource extends Resource
                                         Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Korban')),
                                         Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
                                         Infolists\Components\TextEntry::make('tanggal_lahir')->label(static::mutedLabel('Tanggal Lahir'))
-                                            ->formatStateUsing(fn($state): string => static::formatNullableDate($state)),
+                                            ->formatStateUsing(fn ($state): string => static::formatNullableDate($state)),
                                         Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
                                         Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
@@ -330,7 +330,7 @@ class KasusResource extends Resource
                                         Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Tersangka')),
                                         Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
                                         Infolists\Components\TextEntry::make('tanggal_lahir')->label(static::mutedLabel('Tanggal Lahir'))
-                                            ->formatStateUsing(fn($state): string => static::formatNullableDate($state)),
+                                            ->formatStateUsing(fn ($state): string => static::formatNullableDate($state)),
                                         Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
                                         Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
@@ -347,7 +347,7 @@ class KasusResource extends Resource
                                         Infolists\Components\TextEntry::make('nama')->label(static::mutedLabel('Nama Saksi')),
                                         Infolists\Components\TextEntry::make('tempat_lahir')->label(static::mutedLabel('Tempat Lahir'))->default('-'),
                                         Infolists\Components\TextEntry::make('tanggal_lahir')->label(static::mutedLabel('Tanggal Lahir'))
-                                            ->formatStateUsing(fn($state): string => static::formatNullableDate($state)),
+                                            ->formatStateUsing(fn ($state): string => static::formatNullableDate($state)),
                                         Infolists\Components\TextEntry::make('hp')->label(static::mutedLabel('No HP'))->default('-'),
                                         Infolists\Components\TextEntry::make('alamat')->label(static::mutedLabel('Alamat'))->columnSpanFull()->default('-'),
                                     ])
@@ -385,28 +385,28 @@ class KasusResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('korban_list')
                     ->label('Korban')
-                    ->state(fn(Kasus $record): string => $record->korbanList())
+                    ->state(fn (Kasus $record): string => $record->korbanList())
                     ->limit(30)
                     ->searchable(
-                        query: fn(Builder $query, string $search): Builder => $query->whereHas(
+                        query: fn (Builder $query, string $search): Builder => $query->whereHas(
                             'korbans',
-                            fn(Builder $relationQuery): Builder => $relationQuery->where('nama', 'like', "%{$search}%")
+                            fn (Builder $relationQuery): Builder => $relationQuery->where('nama', 'like', "%{$search}%")
                         ),
                     ),
                 Tables\Columns\TextColumn::make('tersangka_list')
                     ->label('Tersangka')
-                    ->state(fn(Kasus $record): string => $record->tersangkaList())
+                    ->state(fn (Kasus $record): string => $record->tersangkaList())
                     ->limit(30)
                     ->searchable(
-                        query: fn(Builder $query, string $search): Builder => $query->whereHas(
+                        query: fn (Builder $query, string $search): Builder => $query->whereHas(
                             'tersangkas',
-                            fn(Builder $relationQuery): Builder => $relationQuery->where('nama', 'like', "%{$search}%")
+                            fn (Builder $relationQuery): Builder => $relationQuery->where('nama', 'like', "%{$search}%")
                         ),
                     )
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('saksi_list')
                     ->label('Saksi')
-                    ->state(fn(Kasus $record): string => $record->saksis->pluck('nama')->join(', ') ?: '-')
+                    ->state(fn (Kasus $record): string => $record->saksis->pluck('nama')->join(', ') ?: '-')
                     ->limit(30)
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('perkara.nama')
@@ -427,11 +427,11 @@ class KasusResource extends Resource
                 Tables\Columns\TextColumn::make('dokumen_status')
                     ->label('Dokumen/Giat')
                     ->badge()
-                    ->formatStateUsing(fn($state): string => strtoupper((string) ($state?->value ?? $state)))
-                    ->color(fn($state): string => ($state?->value ?? $state) === DokumenStatus::Sidik->value ? 'warning' : 'info'),
+                    ->formatStateUsing(fn ($state): string => strtoupper((string) ($state?->value ?? $state)))
+                    ->color(fn ($state): string => ($state?->value ?? $state) === DokumenStatus::Sidik->value ? 'warning' : 'info'),
                 Tables\Columns\TextColumn::make('petugas_list')
                     ->label('Petugas')
-                    ->state(fn(Kasus $record): string => $record->petugas->pluck('nama')->join(', ') ?: '-')
+                    ->state(fn (Kasus $record): string => $record->petugas->pluck('nama')->join(', ') ?: '-')
                     ->limit(40)
                     ->toggleable(isToggledHiddenByDefault: true),
                 Tables\Columns\TextColumn::make('penyelesaian.nama')
@@ -446,7 +446,7 @@ class KasusResource extends Resource
                 Tables\Filters\SelectFilter::make('satker_id')
                     ->label('Satker')
                     ->relationship('satker', 'nama')
-                    ->visible(fn(): bool => Auth::user()?->isSuperAdmin() ?? false),
+                    ->visible(fn (): bool => Auth::user()?->isSuperAdmin() ?? false),
                 Tables\Filters\SelectFilter::make('perkara_id')
                     ->label('Jenis Kasus')
                     ->relationship('perkara', 'nama'),
@@ -500,11 +500,11 @@ class KasusResource extends Resource
                         return $query
                             ->when(
                                 ! empty($data['from_date']),
-                                fn(Builder $builder): Builder => $builder->whereDate('tanggal_lp', '>=', (string) $data['from_date'])
+                                fn (Builder $builder): Builder => $builder->whereDate('tanggal_lp', '>=', (string) $data['from_date'])
                             )
                             ->when(
                                 ! empty($data['to_date']),
-                                fn(Builder $builder): Builder => $builder->whereDate('tanggal_lp', '<=', (string) $data['to_date'])
+                                fn (Builder $builder): Builder => $builder->whereDate('tanggal_lp', '<=', (string) $data['to_date'])
                             );
                     })
                     ->indicateUsing(function (array $data): ?string {
@@ -606,7 +606,7 @@ class KasusResource extends Resource
 
     private static function mutedLabel(string $label): HtmlString
     {
-        return new HtmlString('<span style="font-size:11px;color:#94a3b8;letter-spacing:.02em;">' . e($label) . '</span>');
+        return new HtmlString('<span style="font-size:11px;color:#94a3b8;letter-spacing:.02em;">'.e($label).'</span>');
     }
 
     private static function formatNullableDate($state): string
@@ -642,7 +642,7 @@ class KasusResource extends Resource
             return '<span style="color:#9ca3af;">Belum ada lampiran.</span>';
         }
 
-        $url = '/storage/' . $path;
+        $url = '/storage/'.$path;
         $fileName = basename($path);
         $extension = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
         $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'], true);

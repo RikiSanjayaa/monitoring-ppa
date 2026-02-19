@@ -52,9 +52,9 @@ class LatestKasusWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('dokumen_status')
                     ->label('Dokumen/Giat')
                     ->badge()
-                    ->formatStateUsing(fn($state): string => strtoupper((string) ($state?->value ?? $state))),
+                    ->formatStateUsing(fn ($state): string => strtoupper((string) ($state?->value ?? $state))),
             ])
-            ->recordUrl(fn(Kasus $record): string => KasusResource::getUrl('view', ['record' => $record]))
+            ->recordUrl(fn (Kasus $record): string => KasusResource::getUrl('view', ['record' => $record]))
             ->paginated(false)
             ->defaultSort('tanggal_lp', 'desc');
     }
