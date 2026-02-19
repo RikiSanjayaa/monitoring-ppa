@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\KasusResource;
 use App\Models\Kasus;
 use App\Support\KasusDashboardFilters;
+use Filament\Support\Enums\IconPosition;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -31,6 +32,12 @@ class LatestKasusWidget extends BaseWidget
             ->columns([
                 Tables\Columns\TextColumn::make('nomor_lp')
                     ->label('Nomor LP')
+                    ->copyable()
+                    ->copyMessage('Nomor LP disalin')
+                    ->copyMessageDuration(1500)
+                    ->icon('heroicon-o-clipboard-document')
+                    ->iconColor('gray')
+                    ->iconPosition(IconPosition::After)
                     ->searchable(),
                 Tables\Columns\TextColumn::make('tanggal_lp')
                     ->label('Tanggal LP')
@@ -45,9 +52,9 @@ class LatestKasusWidget extends BaseWidget
                 Tables\Columns\TextColumn::make('dokumen_status')
                     ->label('Dokumen/Giat')
                     ->badge()
-                    ->formatStateUsing(fn ($state): string => strtoupper((string) ($state?->value ?? $state))),
+                    ->formatStateUsing(fn($state): string => strtoupper((string) ($state?->value ?? $state))),
             ])
-            ->recordUrl(fn (Kasus $record): string => KasusResource::getUrl('view', ['record' => $record]))
+            ->recordUrl(fn(Kasus $record): string => KasusResource::getUrl('view', ['record' => $record]))
             ->paginated(false)
             ->defaultSort('tanggal_lp', 'desc');
     }
