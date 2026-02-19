@@ -322,6 +322,31 @@ Alur:
 - Docker + Docker Compose plugin tersedia.
 - File `.env` aplikasi sudah dikonfigurasi untuk environment server.
 
+## CI/CD VPS Public IP (SSH + Docker Compose)
+
+Workflow deploy tersedia di `.github/workflows/deploy-vps.yml`.
+
+Alur:
+
+1. Push ke branch `main`.
+2. GitHub Actions menjalankan `pint --test` dan `php artisan test`.
+3. Jika lolos, action SSH langsung ke VPS public IP.
+4. Action menjalankan `scripts/deploy-homeserver.sh` di server target (script bersifat generic).
+5. Script deploy akan pull branch terbaru, menjalankan `docker compose -f compose.prod.yaml up -d --no-build`, lalu `composer install` dan command artisan penting.
+
+### Secrets GitHub yang wajib
+
+- `VPS_HOST`: IP public atau hostname VPS.
+- `VPS_USER`: user SSH di VPS.
+- `VPS_SSH_PRIVATE_KEY`: private key untuk SSH ke VPS.
+- `VPS_APP_DIR`: path project di VPS (contoh `/opt/monitoring-ppa`).
+
+### Prasyarat di VPS
+
+- Repo ini sudah di-clone pada `VPS_APP_DIR`.
+- Docker + Docker Compose plugin tersedia.
+- File `.env` aplikasi sudah dikonfigurasi untuk environment server.
+
 ### Manual command ringkas
 
 Development:
