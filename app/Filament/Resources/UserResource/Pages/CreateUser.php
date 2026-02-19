@@ -20,6 +20,8 @@ class CreateUser extends CreateRecord
             $data['satker_id'] = null;
         }
 
+        $data['email_verified_at'] = now();
+
         return $data;
     }
 }
