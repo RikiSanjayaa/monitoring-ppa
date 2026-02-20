@@ -3,8 +3,13 @@ FROM php:8.3-fpm
 ARG HOST_UID=1000
 ARG HOST_GID=1000
 
-RUN groupmod -o -g "${HOST_GID}" www-data \
-    && usermod -o -u "${HOST_UID}" -g "${HOST_GID}" www-data
+RUN set -eux; \
+    if [ "${HOST_UID}" = "0" ] || [ "${HOST_GID}" = "0" ]; then \
+        echo "Skipping www-data UID/GID remap because HOST_UID/HOST_GID must be non-root."; \
+    else \
+        groupmod -o -g "${HOST_GID}" www-data; \
+        usermod -o -u "${HOST_UID}" -g "${HOST_GID}" www-data; \
+    fi
 
 RUN set -eux; \
     if [ -f /etc/apt/sources.list ]; then \

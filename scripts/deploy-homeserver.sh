@@ -56,26 +56,35 @@ fi
 
 LOCAL_UID="$(id -u)"
 LOCAL_GID="$(id -g)"
+EFFECTIVE_UID="${LOCAL_UID}"
+EFFECTIVE_GID="${LOCAL_GID}"
+
+if [[ "${LOCAL_UID}" == "0" || "${LOCAL_GID}" == "0" ]]; then
+    EFFECTIVE_UID="33"
+    EFFECTIVE_GID="33"
+    echo "Deploy session is running as root. Using safe app UID/GID ${EFFECTIVE_UID}:${EFFECTIVE_GID}."
+fi
+
 APP_IMAGE="${COMPOSE_PROJECT_NAME:-monitoring-ppa}-app:latest"
 IMAGE_UID="$(docker run --rm "${APP_IMAGE}" id -u www-data 2>/dev/null || true)"
 IMAGE_GID="$(docker run --rm "${APP_IMAGE}" id -g www-data 2>/dev/null || true)"
 IMAGE_UID_GID_MISMATCH=0
 
-if [[ -n "${IMAGE_UID}" && -n "${IMAGE_GID}" ]] && [[ "${IMAGE_UID}" != "${LOCAL_UID}" || "${IMAGE_GID}" != "${LOCAL_GID}" ]]; then
+if [[ -n "${IMAGE_UID}" && -n "${IMAGE_GID}" ]] && [[ "${IMAGE_UID}" != "${EFFECTIVE_UID}" || "${IMAGE_GID}" != "${EFFECTIVE_GID}" ]]; then
     IMAGE_UID_GID_MISMATCH=1
 fi
 
 if [[ "${FORCE_REBUILD}" == "1" || "${FORCE_REBUILD}" == "true" || "${IMAGE_UID_GID_MISMATCH}" == "1" ]]; then
     if [[ "${IMAGE_UID_GID_MISMATCH}" == "1" ]]; then
-        echo "Detected app image UID/GID mismatch (image: ${IMAGE_UID}:${IMAGE_GID}, host: ${LOCAL_UID}:${LOCAL_GID}). Rebuilding app image..."
+        echo "Detected app image UID/GID mismatch (image: ${IMAGE_UID}:${IMAGE_GID}, target: ${EFFECTIVE_UID}:${EFFECTIVE_GID}). Rebuilding app image..."
     fi
-    HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" compose build app
+    HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose build app
 elif ! docker image inspect "${APP_IMAGE}" > /dev/null 2>&1; then
     echo "Image ${APP_IMAGE} not found. Building app image first..."
-    HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" compose build app
+    HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose build app
 fi
 
-HOST_UID="${LOCAL_UID}" HOST_GID="${LOCAL_GID}" compose up -d --no-build
+HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose up -d --no-build
 
 APP_UID="$(compose exec -T app id -u www-data | tr -d '\r')"
 APP_GID="$(compose exec -T app id -g www-data | tr -d '\r')"
