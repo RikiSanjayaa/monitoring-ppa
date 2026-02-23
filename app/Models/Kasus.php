@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class Kasus extends Model
 {
@@ -53,7 +54,8 @@ class Kasus extends Model
         static::addGlobalScope(new SatkerScope);
 
         static::creating(function (Kasus $kasus): void {
-            static::ensureUniqueNomorLp($kasus);
+            static::normalizeNomorLp($kasus);
+            static::guardDuplicateNomorLp($kasus);
 
             if (! $kasus->created_by && Auth::id()) {
                 $kasus->created_by = Auth::id();
@@ -61,8 +63,9 @@ class Kasus extends Model
         });
 
         static::updating(function (Kasus $kasus): void {
-            if ($kasus->isDirty(['satker_id', 'nomor_lp'])) {
-                static::ensureUniqueNomorLp($kasus);
+            if ($kasus->isDirty('nomor_lp')) {
+                static::normalizeNomorLp($kasus);
+                static::guardDuplicateNomorLp($kasus);
             }
         });
     }
@@ -164,30 +167,28 @@ class Kasus extends Model
         return $this->tersangkaList();
     }
 
-    private static function ensureUniqueNomorLp(Kasus $kasus): void
+    private static function normalizeNomorLp(Kasus $kasus): void
     {
-        if (! $kasus->satker_id) {
+        $kasus->nomor_lp = trim((string) $kasus->nomor_lp);
+    }
+
+    private static function guardDuplicateNomorLp(Kasus $kasus): void
+    {
+        if ($kasus->nomor_lp === '') {
             return;
         }
 
-        $base = trim((string) $kasus->nomor_lp);
-
-        if ($base === '') {
-            $base = sprintf('LP/SATKER-%d/%s', $kasus->satker_id, now()->format('YmdHis'));
-        }
-
-        $candidate = $base;
-        $counter = 2;
-
-        while (static::withoutGlobalScopes()
-            ->where('satker_id', $kasus->satker_id)
-            ->where('nomor_lp', $candidate)
+        $exists = static::withoutGlobalScopes()
+            ->whereRaw('LOWER(nomor_lp) = ?', [strtolower($kasus->nomor_lp)])
             ->when($kasus->exists, fn (Builder $query): Builder => $query->whereKeyNot($kasus->getKey()))
-            ->exists()) {
-            $candidate = sprintf('%s (%d)', $base, $counter);
-            $counter++;
+            ->exists();
+
+        if (! $exists) {
+            return;
         }
 
-        $kasus->nomor_lp = $candidate;
+        throw ValidationException::withMessages([
+            'nomor_lp' => 'Nomor LP sudah terpakai pada kasus lain. Gunakan nomor LP yang unik.',
+        ]);
     }
 }

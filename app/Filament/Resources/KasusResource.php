@@ -6,6 +6,7 @@ use App\Enums\DokumenStatus;
 use App\Filament\Resources\KasusResource\Pages;
 use App\Filament\Resources\KasusResource\RelationManagers\RtlsRelationManager;
 use App\Models\Kasus;
+use App\Models\Satker;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Infolists;
@@ -54,12 +55,38 @@ class KasusResource extends Resource
                             ->required()
                             ->searchable()
                             ->preload()
+                            ->live()
                             ->default(fn (): ?int => Auth::user()?->satker_id)
                             ->disabled(fn (): bool => Auth::user()?->isAdmin() ?? false)
                             ->dehydrated(true),
                         Forms\Components\TextInput::make('nomor_lp')
                             ->label('Nomor LP')
                             ->required()
+                            ->dehydrateStateUsing(fn (?string $state): string => trim((string) $state))
+                            ->placeholder(fn (Forms\Get $get): string => static::nomorLpPlaceholder($get('satker_id')))
+                            ->helperText(fn (Forms\Get $get): string => static::nomorLpHelperText($get('satker_id')))
+                            ->rule(function (?Kasus $record): \Closure {
+                                return function (string $attribute, $value, \Closure $fail) use ($record): void {
+                                    $nomorLp = trim((string) $value);
+
+                                    if ($nomorLp === '') {
+                                        return;
+                                    }
+
+                                    if ($record && trim((string) $record->nomor_lp) === $nomorLp) {
+                                        return;
+                                    }
+
+                                    $exists = Kasus::withoutGlobalScopes()
+                                        ->whereRaw('LOWER(nomor_lp) = ?', [strtolower($nomorLp)])
+                                        ->when($record, fn (Builder $query): Builder => $query->whereKeyNot($record->getKey()))
+                                        ->exists();
+
+                                    if ($exists) {
+                                        $fail('Nomor LP sudah terpakai pada kasus lain. Gunakan nomor LP yang unik.');
+                                    }
+                                };
+                            })
                             ->maxLength(255),
                         Forms\Components\DatePicker::make('tanggal_lp')
                             ->label('Tanggal LP')
@@ -568,7 +595,7 @@ class KasusResource extends Resource
                 $subtitle = trim(implode(' | ', array_filter([$petugas->pangkat, $petugas->nrp])));
 
                 return sprintf(
-                    '<a href="%s" style="display:inline-flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid #374151;border-radius:10px;text-decoration:none;background:rgba(59,130,246,.08);margin:0 8px 8px 0;"><span style="font-weight:600;color:#e5e7eb;">%s</span><span style="font-size:11px;color:#9ca3af;">%s</span></a>',
+                    '<a href="%s" style="display:inline-flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid #94a3b8;border-radius:10px;text-decoration:none;background:rgba(56,189,248,.14);margin:0 8px 8px 0;color:inherit;"><span style="font-weight:600;color:inherit;">%s</span><span style="font-size:11px;color:inherit;opacity:.82;">%s</span></a>',
                     e($url),
                     e($petugas->nama),
                     e($subtitle !== '' ? $subtitle : 'Detail petugas'),
@@ -639,5 +666,44 @@ class KasusResource extends Resource
             e($url),
             e($url),
         );
+    }
+
+    private static function nomorLpPlaceholder($satkerId): string
+    {
+        $tipe = static::satkerTipe($satkerId);
+
+        if ($tipe === 'subdit') {
+            return 'LP/A/001/II/TPPO-1/2026/SPKT.DITRES PPA DAN PPO/POLDA NTB';
+        }
+
+        if ($tipe === 'polres') {
+            return 'LP/B/014/II/2026/SPKT.SATRESKRIM/POLRES MATARAM/POLDA NTB';
+        }
+
+        return 'LP/A/001/II/...';
+    }
+
+    private static function nomorLpHelperText($satkerId): string
+    {
+        $tipe = static::satkerTipe($satkerId);
+
+        if ($tipe === 'subdit') {
+            return 'Contoh: LP/B/4/II/RES.1.4/2026/SPKT.DITRES PPA DAN PPO/POLDA NTB';
+        }
+
+        if ($tipe === 'polres') {
+            return 'Contoh: LP/B/4/II/2026/SPKT.SATRESKRIM/POLRESTA MATARAM/POLDA NTB';
+        }
+
+        return 'Pilih satker untuk melihat contoh nomor LP.';
+    }
+
+    private static function satkerTipe($satkerId): ?string
+    {
+        if (! $satkerId) {
+            return null;
+        }
+
+        return Satker::query()->whereKey((int) $satkerId)->value('tipe');
     }
 }
