@@ -29,8 +29,6 @@ class Kasus extends Model
         'perkara_id',
         'dokumen_status',
         'kronologi_kejadian',
-        'kronologi_kejadian_file',
-        'laporan_polisi',
         'laporan_polisi_file',
         'tindak_pidana_pasal',
         'hubungan_pelaku_dengan_korban',

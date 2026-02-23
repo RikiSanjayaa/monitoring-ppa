@@ -58,7 +58,6 @@ class KasusSeeder extends Seeder
                         'hubungan_pelaku_dengan_korban' => $index % 2 === 0 ? 'Keluarga' : 'Tetangga',
                         'proses_pidana' => $index % 2 === 0 ? 'Penyidikan berjalan' : 'Pelimpahan berkas tahap awal',
                         'kronologi_kejadian' => sprintf('Kronologi kejadian kasus %s nomor %d.', $satker->kode, $index),
-                        'laporan_polisi' => sprintf('Uraian laporan polisi kasus %s nomor %d.', $satker->kode, $index),
                         'dokumen_status' => $dokumenStatus,
                         'penyelesaian_id' => $penyelesaian?->id,
                         'created_by' => $admin?->id,
