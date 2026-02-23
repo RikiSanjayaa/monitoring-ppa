@@ -21,7 +21,6 @@ class KasusTemplateSpreadsheet
         ?int $satkerId = null,
         ?int $userId = null,
         ?array $titles = null,
-        ?int $totalKasusDatabase = null,
     ): Spreadsheet {
         $spreadsheet = new Spreadsheet;
         $recapData = KasusRecapSummary::fromCollection($records);
@@ -47,7 +46,7 @@ class KasusTemplateSpreadsheet
 
         $recapSheet = $spreadsheet->createSheet();
         $recapSheet->setTitle(self::nextSheetTitle('Rekap', $usedSheetTitles));
-        self::fillRecapSheet($recapSheet, $records, $recapData, $satkerId, $userId, $titles, $totalKasusDatabase);
+        self::fillRecapSheet($recapSheet, $records, $recapData, $satkerId, $userId, $titles);
 
         $spreadsheet->setActiveSheetIndex(0);
 
@@ -147,7 +146,6 @@ class KasusTemplateSpreadsheet
         ?int $satkerId,
         ?int $userId,
         ?array $titles,
-        ?int $totalKasusDatabase,
     ): void {
         self::fillKopAndTitle($sheet, $records, $satkerId, $userId, true, $titles);
 
@@ -264,7 +262,7 @@ class KasusTemplateSpreadsheet
         self::setCell($sheet, $ketColumnIndex, $totalRow, '');
 
         $totalPenyelesaianPerkara = (int) collect($totals['penyelesaian_counts'] ?? [])->sum();
-        $totalKasusKeseluruhan = (int) ($totalKasusDatabase ?? $records->count());
+        $totalKasusKeseluruhan = (int) $records->count();
         $persentasePenyelesaianPerkara = $totalKasusKeseluruhan > 0
             ? number_format(($totalPenyelesaianPerkara / $totalKasusKeseluruhan) * 100, 2, ',', '.')
             : '0,00';

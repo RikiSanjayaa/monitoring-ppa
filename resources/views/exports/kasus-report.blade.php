@@ -263,7 +263,7 @@
             ],
         );
         $totalPenyelesaianPerkara = collect($recapData['totals']['penyelesaian_counts'] ?? [])->sum();
-        $totalKasusKeseluruhan = (int) ($totalKasusDatabase ?? $records->count());
+        $totalKasusKeseluruhan = (int) $records->count();
         $persentasePenyelesaianPerkara =
             $totalKasusKeseluruhan > 0
                 ? number_format(($totalPenyelesaianPerkara / $totalKasusKeseluruhan) * 100, 2, ',', '.')
