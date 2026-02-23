@@ -91,13 +91,13 @@ if [[ "${FORCE_REBUILD}" == "1" || "${FORCE_REBUILD}" == "true" || "${IMAGE_UID_
     if [[ "${IMAGE_UID_GID_MISMATCH}" == "1" ]]; then
         echo "Detected app image UID/GID mismatch (image: ${IMAGE_UID}:${IMAGE_GID}, target: ${EFFECTIVE_UID}:${EFFECTIVE_GID}). Rebuilding app image..."
     fi
-    run_step "Build app image" env HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose build app
+    HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" run_step "Build app image" compose build app
 elif ! docker image inspect "${APP_IMAGE}" > /dev/null 2>&1; then
     echo "Image ${APP_IMAGE} not found. Building app image first..."
-    run_step "Build app image (missing image)" env HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose build app
+    HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" run_step "Build app image (missing image)" compose build app
 fi
 
-run_step "Start containers" env HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose up -d --no-build
+HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" run_step "Start containers" compose up -d --no-build
 
 log "START: Read app www-data UID/GID"
 uid_gid_started_at=$SECONDS
