@@ -89,23 +89,6 @@ class KasusResource extends Resource
                             ->label('Kronologi Kejadian')
                             ->rows(4)
                             ->columnSpanFull(),
-                        Forms\Components\FileUpload::make('kronologi_kejadian_file')
-                            ->label('Lampiran Kronologi Kejadian')
-                            ->disk('public')
-                            ->directory('kasus/kronologi')
-                            ->acceptedFileTypes([
-                                'application/pdf',
-                                'application/msword',
-                                'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                                'image/*',
-                            ])
-                            ->downloadable()
-                            ->openable()
-                            ->columnSpanFull(),
-                        Forms\Components\Textarea::make('laporan_polisi')
-                            ->label('Laporan Polisi')
-                            ->rows(4)
-                            ->columnSpanFull(),
                         Forms\Components\FileUpload::make('laporan_polisi_file')
                             ->label('Lampiran Laporan Polisi')
                             ->disk('public')
@@ -282,27 +265,17 @@ class KasusResource extends Resource
                             ->html()
                             ->default('-')
                             ->columnSpanFull(),
-                        Infolists\Components\TextEntry::make('laporan_polisi')
-                            ->label(static::mutedLabel('Laporan Polisi'))
-                            ->formatStateUsing(fn (?string $state): string => static::narrativeHtml($state))
-                            ->html()
-                            ->default('-')
-                            ->columnSpanFull(),
                     ])
                     ->columns(1),
                 Infolists\Components\Section::make('Lampiran')
                     ->schema([
-                        Infolists\Components\TextEntry::make('kronologi_kejadian_file')
-                            ->label('Lampiran Kronologi Kejadian')
-                            ->formatStateUsing(fn (?string $state): string => static::attachmentPreviewHtml($state))
-                            ->html()
-                            ->columnSpanFull(),
                         Infolists\Components\TextEntry::make('laporan_polisi_file')
                             ->label('Lampiran Laporan Polisi')
                             ->formatStateUsing(fn (?string $state): string => static::attachmentPreviewHtml($state))
                             ->html()
                             ->columnSpanFull(),
                     ]),
+
                 Infolists\Components\Section::make('Identitas')
                     ->schema([
                         Infolists\Components\Fieldset::make('Korban')
