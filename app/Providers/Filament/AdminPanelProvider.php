@@ -31,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('')
             ->login()
-            ->brandLogo(fn() => view('filament.brand'))
+            ->brandLogo(fn () => view('filament.brand'))
             ->brandName('SIM-LP')
             ->favicon(asset('logo.png'))
             ->passwordReset()
@@ -42,13 +42,13 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->renderHook(
                 PanelsRenderHook::TOPBAR_START,
-                fn(): string => view('filament.hooks.topbar-greeting', [
+                fn (): string => view('filament.hooks.topbar-greeting', [
                     'user' => Filament::auth()->user(),
                 ])->render(),
             )
             ->renderHook(
                 TablesRenderHook::TOOLBAR_SEARCH_BEFORE,
-                fn(): string => <<<'HTML'
+                fn (): string => <<<'HTML'
                     <style>
                         @media (min-width: 1024px) {
                             .fi-resource-kasus .fi-ta-header-toolbar .fi-ta-search-field,
