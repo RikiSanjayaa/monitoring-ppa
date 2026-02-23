@@ -101,8 +101,8 @@ HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" run_step "Start containe
 
 log "START: Read app www-data UID/GID"
 uid_gid_started_at=$SECONDS
-APP_UID="$(compose exec --interactive=false -T app id -u www-data | tr -d '\r')"
-APP_GID="$(compose exec --interactive=false -T app id -g www-data | tr -d '\r')"
+APP_UID="$(compose exec -T app id -u www-data | tr -d '\r')"
+APP_GID="$(compose exec -T app id -g www-data | tr -d '\r')"
 log "DONE: Read app www-data UID/GID (${SECONDS-uid_gid_started_at}s)"
 SQLITE_DB_PATH="$(resolve_sqlite_db_path || true)"
 SQLITE_DB_DIR=""
@@ -116,7 +116,7 @@ if [[ -n "${SQLITE_DB_PATH}" ]]; then
     SQLITE_DB_DIR="$(dirname "${SQLITE_DB_PATH}")"
 fi
 
-run_step "Fix storage/bootstrap permissions" compose exec --interactive=false -T --user root app sh -lc "
+run_step "Fix storage/bootstrap permissions" compose exec -T --user root app sh -lc "
 set -eu
 mkdir -p /var/www/html/storage/framework/cache
 mkdir -p /var/www/html/storage/framework/sessions
@@ -130,7 +130,7 @@ find /var/www/html/storage /var/www/html/bootstrap/cache -type f -exec chmod 664
 "
 
 if [[ -n "${SQLITE_DB_PATH}" && -n "${SQLITE_DB_DIR}" ]]; then
-    run_step "Fix sqlite directory permissions" compose exec --interactive=false -T --user root app sh -lc "
+    run_step "Fix sqlite directory permissions" compose exec -T --user root app sh -lc "
 set -eu
 mkdir -p '${SQLITE_DB_DIR}'
 touch '${SQLITE_DB_PATH}'
@@ -140,14 +140,14 @@ find '${SQLITE_DB_DIR}' -type f -exec chmod 664 {} \\;
 "
 fi
 
-run_step "Configure git safe.directory in app container" compose exec --interactive=false -T --user www-data -e HOME=/tmp app git config --global --add safe.directory /var/www/html || true
-run_step "Composer install (production)" compose exec --interactive=false -T --user www-data -e HOME=/tmp app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+run_step "Configure git safe.directory in app container" compose exec -T --user www-data -e HOME=/tmp app git config --global --add safe.directory /var/www/html || true
+run_step "Composer install (production)" compose exec -T --user www-data -e HOME=/tmp app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 if ! grep -qE '^APP_KEY=base64:' .env; then
-    run_step "Generate APP_KEY" compose exec --interactive=false -T --user www-data -e HOME=/tmp app php artisan key:generate --force
+    run_step "Generate APP_KEY" compose exec -T --user www-data -e HOME=/tmp app php artisan key:generate --force
 fi
-run_step "Run migrations" compose exec --interactive=false -T --user www-data -e HOME=/tmp app php artisan migrate --force
-run_step "Clear optimize cache" compose exec --interactive=false -T --user www-data -e HOME=/tmp app php artisan optimize:clear
-run_step "Clear filament optimize cache" compose exec --interactive=false -T --user www-data -e HOME=/tmp app php artisan filament:optimize-clear
-run_step "Optimize Laravel" compose exec --interactive=false -T --user www-data -e HOME=/tmp app php artisan optimize
-run_step "Optimize Filament" compose exec --interactive=false -T --user www-data -e HOME=/tmp app php artisan filament:optimize
-run_step "Restart queue workers" compose exec --interactive=false -T --user www-data -e HOME=/tmp app php artisan queue:restart
+run_step "Run migrations" compose exec -T --user www-data -e HOME=/tmp app php artisan migrate --force
+run_step "Clear optimize cache" compose exec -T --user www-data -e HOME=/tmp app php artisan optimize:clear
+run_step "Clear filament optimize cache" compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize-clear
+run_step "Optimize Laravel" compose exec -T --user www-data -e HOME=/tmp app php artisan optimize
+run_step "Optimize Filament" compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize
+run_step "Restart queue workers" compose exec -T --user www-data -e HOME=/tmp app php artisan queue:restart
