@@ -337,6 +337,7 @@ Alur:
 ### Secrets GitHub yang wajib
 
 - `VPS_HOST`: IP public atau hostname VPS.
+- `VPS_PORT`: port SSH VPS (contoh `22`).
 - `VPS_USER`: user SSH di VPS.
 - `VPS_SSH_PRIVATE_KEY`: private key untuk SSH ke VPS.
 - `VPS_APP_DIR`: path project di VPS (contoh `/opt/monitoring-ppa`).
