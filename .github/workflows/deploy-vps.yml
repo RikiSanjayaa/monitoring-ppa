@@ -85,5 +85,11 @@ jobs:
             -o StrictHostKeyChecking=accept-new \
             -o UserKnownHostsFile=~/.ssh/known_hosts \
             "${VPS_USER}@${VPS_HOST}" \
-            "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' FORCE_REBUILD='${FORCE_REBUILD}' COMPOSE_FILE_PATH='${COMPOSE_FILE_PATH}' bash -s" \
+            "set -e; echo '[preflight] host='\"\$(hostname)\"; echo '[preflight] user='\"\$(whoami)\"; echo '[preflight] cwd='\"\$(pwd)\"; echo '[preflight] app_dir=${APP_DIR}'; ls -la '${APP_DIR}'; git -C '${APP_DIR}' rev-parse --short HEAD"
+          ssh -i ~/.ssh/id_deploy \
+            -p "${SSH_PORT}" \
+            -o StrictHostKeyChecking=accept-new \
+            -o UserKnownHostsFile=~/.ssh/known_hosts \
+            "${VPS_USER}@${VPS_HOST}" \
+            "APP_DIR='${APP_DIR}' BRANCH='${GITHUB_REF_NAME}' FORCE_REBUILD='${FORCE_REBUILD}' COMPOSE_FILE_PATH='${COMPOSE_FILE_PATH}' bash -x -s" \
             < scripts/deploy-homeserver.sh
