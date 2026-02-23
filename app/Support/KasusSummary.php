@@ -86,7 +86,7 @@ class KasusSummary
             ->values();
 
         $penyelesaians = Penyelesaian::query()
-            ->select(['id', 'nama', 'is_active'])
+            ->select(['id', 'nama', 'is_active', 'urutan'])
             ->when(
                 $usedIds->isNotEmpty(),
                 fn (Builder $builder): Builder => $builder->where(function (Builder $statusQuery) use ($usedIds): void {
@@ -96,7 +96,7 @@ class KasusSummary
                 }),
                 fn (Builder $builder): Builder => $builder->where('is_active', true)
             )
-            ->orderBy('id')
+            ->ordered()
             ->get();
 
         return $penyelesaians

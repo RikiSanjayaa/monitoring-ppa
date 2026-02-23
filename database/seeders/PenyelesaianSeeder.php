@@ -24,10 +24,13 @@ class PenyelesaianSeeder extends Seeder
             'RJ',
         ];
 
-        foreach ($items as $nama) {
+        foreach ($items as $index => $nama) {
             Penyelesaian::query()->updateOrCreate(
                 ['nama' => $nama],
-                ['is_active' => true],
+                [
+                    'is_active' => true,
+                    'urutan' => $index + 1,
+                ],
             );
         }
     }

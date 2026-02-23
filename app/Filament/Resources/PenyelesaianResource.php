@@ -41,6 +41,13 @@ class PenyelesaianResource extends Resource
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(255),
+                Forms\Components\TextInput::make('urutan')
+                    ->label('Urutan')
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->unique(ignoreRecord: true)
+                    ->placeholder('Contoh: 1, 2, 3'),
                 Forms\Components\Toggle::make('is_active')
                     ->label('Aktif')
                     ->default(true),
@@ -54,6 +61,9 @@ class PenyelesaianResource extends Resource
                 Tables\Columns\TextColumn::make('nama')
                     ->label('Nama')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('urutan')
+                    ->label('Urutan')
+                    ->sortable(),
                 Tables\Columns\IconColumn::make('is_active')
                     ->label('Aktif')
                     ->boolean(),
@@ -71,7 +81,9 @@ class PenyelesaianResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->reorderable('urutan')
+            ->modifyQueryUsing(fn ($query) => $query->ordered());
     }
 
     public static function getPages(): array

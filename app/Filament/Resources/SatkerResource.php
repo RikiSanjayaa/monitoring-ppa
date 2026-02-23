@@ -53,6 +53,13 @@ class SatkerResource extends Resource
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(255),
+                Forms\Components\TextInput::make('urutan')
+                    ->label('Urutan')
+                    ->numeric()
+                    ->integer()
+                    ->minValue(1)
+                    ->unique(ignoreRecord: true)
+                    ->placeholder('Contoh: 1, 2, 3'),
             ]);
     }
 
@@ -70,6 +77,9 @@ class SatkerResource extends Resource
                 Tables\Columns\TextColumn::make('kode')
                     ->label('Kode')
                     ->searchable(),
+                Tables\Columns\TextColumn::make('urutan')
+                    ->label('Urutan')
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('users_count')
                     ->label('Jumlah User')
                     ->counts('users'),
@@ -91,7 +101,9 @@ class SatkerResource extends Resource
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->reorderable('urutan')
+            ->modifyQueryUsing(fn ($query) => $query->ordered());
     }
 
     public static function getPages(): array

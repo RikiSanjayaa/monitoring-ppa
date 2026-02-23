@@ -216,6 +216,50 @@ class KasusSummarySyncTest extends TestCase
         $this->assertSame(2, $totals['jumlah']);
     }
 
+    public function test_summary_columns_follow_penyelesaian_urutan(): void
+    {
+        $satker = Satker::query()->create([
+            'nama' => 'Satker D',
+            'tipe' => 'subdit',
+            'kode' => 'SATKER-D',
+        ]);
+        $perkara = Perkara::query()->create([
+            'nama' => 'KTP',
+            'is_active' => true,
+        ]);
+
+        Penyelesaian::query()->create(['nama' => 'Lidik', 'is_active' => true, 'urutan' => 1]);
+        Penyelesaian::query()->create(['nama' => 'Sidik', 'is_active' => true, 'urutan' => 2]);
+        $third = Penyelesaian::query()->create(['nama' => 'Urutan 3', 'is_active' => true, 'urutan' => 3]);
+        $first = Penyelesaian::query()->create(['nama' => 'Urutan 1', 'is_active' => true, 'urutan' => 1]);
+        $second = Penyelesaian::query()->create(['nama' => 'Urutan 2', 'is_active' => true, 'urutan' => 2]);
+
+        $this->createKasus($satker, $perkara, [
+            'dokumen_status' => DokumenStatus::Sidik->value,
+            'penyelesaian_id' => $second->id,
+        ]);
+        $this->createKasus($satker, $perkara, [
+            'dokumen_status' => DokumenStatus::Sidik->value,
+            'penyelesaian_id' => $third->id,
+        ]);
+
+        $records = Kasus::query()->with('satker:id,nama')->get();
+        $columns = KasusSummary::penyelesaianColumns($records);
+
+        $this->assertSame(
+            ['Urutan 1', 'Urutan 2', 'Urutan 3'],
+            $columns->pluck('label')->all(),
+        );
+
+        $summary = KasusSummary::fromCollection($records, $columns);
+        $rowSatker = $summary->firstWhere('unit_kerja', 'Satker D');
+
+        $keyByLabel = $columns->mapWithKeys(fn (array $column): array => [$column['label'] => $column['key']]);
+        $this->assertSame(0, $rowSatker[$keyByLabel->get('Urutan 1')]);
+        $this->assertSame(1, $rowSatker[$keyByLabel->get('Urutan 2')]);
+        $this->assertSame(1, $rowSatker[$keyByLabel->get('Urutan 3')]);
+    }
+
     /**
      * @param  array<string, mixed>  $overrides
      */

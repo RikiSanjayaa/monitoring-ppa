@@ -240,6 +240,20 @@
 
     @php
         $recordsByJenis = $records->groupBy(fn($record) => $record->perkara?->nama ?? 'Lainnya');
+        $satkers = collect($satkers ?? [])->values();
+
+        if ($satkers->isEmpty()) {
+            $satkers = $records
+                ->pluck('satker')
+                ->filter()
+                ->unique('id')
+                ->sortBy('nama')
+                ->values();
+        }
+
+        $jenisGroups = $recordsByJenis->isEmpty()
+            ? collect(['Nihil' => collect()])
+            : $recordsByJenis;
         $recapData = $recapData ?? [
             'penyelesaian_columns' => collect(),
             'rows' => collect(),
@@ -270,7 +284,7 @@
                 : '0,00';
     @endphp
 
-    @forelse ($recordsByJenis as $jenisKasus => $groupedRecords)
+    @foreach ($jenisGroups as $jenisKasus => $groupedRecords)
         <div class="detail-section">
             @if (! $loop->first)
                 <div class="detail-title">{{ strtoupper($jenisKasus) }}</div>
@@ -312,71 +326,94 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($groupedRecords as $record)
+                    @php
+                        $recordsBySatker = $groupedRecords->groupBy(fn($record) => (int) ($record->satker_id ?? 0));
+                        $rowNumber = 1;
+                    @endphp
+                    @foreach ($satkers as $satker)
                         @php
-                            $korbanText = $record->korbans->pluck('nama')->join(', ');
-                            $tersangkaText = $record->tersangkas->pluck('nama')->join(', ');
-                            $penyelesaianId = (int) ($record->penyelesaian_id ?? 0);
+                            $satkerRecords = $recordsBySatker->get((int) $satker->id, collect());
                         @endphp
-                        <tr>
-                            <td class="num">{{ $loop->iteration }}</td>
-                            <td>{{ $record->satker?->nama }}</td>
-                            <td class="small">{{ $record->nomor_lp }}<br>{{ $record->tanggal_lp?->format('d-m-Y') }}
-                            </td>
-                            <td>{{ $record->kronologi_kejadian ?: '-' }}</td>
-                            <td>{{ $record->tindak_pidana_pasal ?: '-' }}</td>
-                            <td>{{ $korbanText !== '' ? $korbanText : '-' }}</td>
-                            <td>{{ $tersangkaText !== '' ? $tersangkaText : '-' }}</td>
-                            <td>{{ $record->hubungan_pelaku_dengan_korban ?: '-' }}</td>
-                            <td class="vertical-cell">
-                                <span class="check-mark">
-                                    @if ($record->dokumen_status?->value === 'lidik')
-                                        <span class="check-mark-stem"></span><span class="check-mark-kick"></span>
-                                    @endif
-                                </span>
-                            </td>
-                            <td class="vertical-cell">
-                                <span class="check-mark">
-                                    @if ($record->dokumen_status?->value === 'sidik')
-                                        <span class="check-mark-stem"></span><span class="check-mark-kick"></span>
-                                    @endif
-                                </span>
-                            </td>
-                            @foreach ($rekapPenyelesaianColumns as $column)
-                                <td class="vertical-cell">
-                                    <span class="check-mark">
-                                        @if ($penyelesaianId === (int) $column['id'])
-                                            <span class="check-mark-stem"></span><span class="check-mark-kick"></span>
-                                        @endif
-                                    </span>
-                                </td>
-                            @endforeach
-                            @if ($rekapPenyelesaianColumns->isEmpty())
-                                <td class="vertical-cell"></td>
-                            @endif
-                            <td class="small">
-                                @if ($record->latestRtl)
-                                    {{ $record->latestRtl->tanggal?->format('d-m-Y') ?? '-' }} -
-                                    {{ $record->latestRtl->keterangan ?: '-' }}
-                                @else
-                                    -
+
+                        @if ($satkerRecords->isEmpty())
+                            <tr>
+                                <td class="num">{{ $rowNumber++ }}</td>
+                                <td>{{ $satker->nama }}</td>
+                                <td class="center">NIHIL</td>
+                                <td class="center">NIHIL</td>
+                                <td class="center">NIHIL</td>
+                                <td class="center">NIHIL</td>
+                                <td class="center">NIHIL</td>
+                                <td class="center">NIHIL</td>
+                                <td class="vertical-cell">-</td>
+                                <td class="vertical-cell">-</td>
+                                @foreach ($rekapPenyelesaianColumns as $column)
+                                    <td class="vertical-cell">-</td>
+                                @endforeach
+                                @if ($rekapPenyelesaianColumns->isEmpty())
+                                    <td class="vertical-cell">-</td>
                                 @endif
-                            </td>
-                        </tr>
+                                <td class="small center">NIHIL</td>
+                            </tr>
+                        @else
+                            @foreach ($satkerRecords as $record)
+                                @php
+                                    $korbanText = $record->korbans->pluck('nama')->join(', ');
+                                    $tersangkaText = $record->tersangkas->pluck('nama')->join(', ');
+                                    $penyelesaianId = (int) ($record->penyelesaian_id ?? 0);
+                                @endphp
+                                <tr>
+                                    <td class="num">{{ $rowNumber++ }}</td>
+                                    <td>{{ $record->satker?->nama ?? $satker->nama }}</td>
+                                    <td class="small">{{ $record->nomor_lp }}<br>{{ $record->tanggal_lp?->format('d-m-Y') }}
+                                    </td>
+                                    <td>{{ $record->kronologi_kejadian ?: '-' }}</td>
+                                    <td>{{ $record->tindak_pidana_pasal ?: '-' }}</td>
+                                    <td>{{ $korbanText !== '' ? $korbanText : '-' }}</td>
+                                    <td>{{ $tersangkaText !== '' ? $tersangkaText : '-' }}</td>
+                                    <td>{{ $record->hubungan_pelaku_dengan_korban ?: '-' }}</td>
+                                    <td class="vertical-cell">
+                                        <span class="check-mark">
+                                            @if ($record->dokumen_status?->value === 'lidik')
+                                                <span class="check-mark-stem"></span><span class="check-mark-kick"></span>
+                                            @endif
+                                        </span>
+                                    </td>
+                                    <td class="vertical-cell">
+                                        <span class="check-mark">
+                                            @if ($record->dokumen_status?->value === 'sidik')
+                                                <span class="check-mark-stem"></span><span class="check-mark-kick"></span>
+                                            @endif
+                                        </span>
+                                    </td>
+                                    @foreach ($rekapPenyelesaianColumns as $column)
+                                        <td class="vertical-cell">
+                                            <span class="check-mark">
+                                                @if ($penyelesaianId === (int) $column['id'])
+                                                    <span class="check-mark-stem"></span><span class="check-mark-kick"></span>
+                                                @endif
+                                            </span>
+                                        </td>
+                                    @endforeach
+                                    @if ($rekapPenyelesaianColumns->isEmpty())
+                                        <td class="vertical-cell"></td>
+                                    @endif
+                                    <td class="small">
+                                        @if ($record->latestRtl)
+                                            {{ $record->latestRtl->tanggal?->format('d-m-Y') ?? '-' }} -
+                                            {{ $record->latestRtl->keterangan ?: '-' }}
+                                        @else
+                                            -
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
+                        @endif
                     @endforeach
                 </tbody>
             </table>
         </div>
-    @empty
-        <div class="title">{{ $mainTitle }}</div>
-        <table>
-            <tbody>
-                <tr>
-                    <td class="center">Tidak ada data.</td>
-                </tr>
-            </tbody>
-        </table>
-    @endforelse
+    @endforeach
 
     <div class="rekap-section">
         <div class="title">{{ $recapTitle }}</div>

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Kasus;
+use App\Models\Satker;
 use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -18,6 +19,7 @@ class KasusTemplateSpreadsheet
      */
     public static function build(
         Collection $records,
+        Collection $satkers,
         ?int $satkerId = null,
         ?int $userId = null,
         ?array $titles = null,
@@ -33,13 +35,13 @@ class KasusTemplateSpreadsheet
         if ($recordsByJenis->isEmpty()) {
             $sheet = $spreadsheet->getActiveSheet();
             $sheet->setTitle(self::nextSheetTitle('Detail', $usedSheetTitles));
-            self::fillDetailSheet($sheet, collect(), 'Tidak Ada Data', $penyelesaianColumns, $satkerId, $userId, $titles);
+            self::fillDetailSheet($sheet, collect(), 'NIHIL', $penyelesaianColumns, $satkers, $satkerId, $userId, $titles);
             $sheetIndex++;
         } else {
             foreach ($recordsByJenis as $jenisKasus => $groupedRecords) {
                 $sheet = $sheetIndex === 0 ? $spreadsheet->getActiveSheet() : $spreadsheet->createSheet();
                 $sheet->setTitle(self::nextSheetTitle((string) $jenisKasus, $usedSheetTitles));
-                self::fillDetailSheet($sheet, $groupedRecords, (string) $jenisKasus, $penyelesaianColumns, $satkerId, $userId, $titles);
+                self::fillDetailSheet($sheet, $groupedRecords, (string) $jenisKasus, $penyelesaianColumns, $satkers, $satkerId, $userId, $titles);
                 $sheetIndex++;
             }
         }
@@ -58,6 +60,7 @@ class KasusTemplateSpreadsheet
         Collection $records,
         string $jenisKasus,
         Collection $penyelesaianColumns,
+        Collection $satkers,
         ?int $satkerId,
         ?int $userId,
         ?array $titles,
@@ -94,44 +97,79 @@ class KasusTemplateSpreadsheet
         self::setCell($sheet, $currentColumn, $headerRow, 'KET');
 
         $row = $dataStartRow;
-        foreach ($records as $index => $record) {
-            $korban = $record->korbans->pluck('nama')->join(', ');
-            $tersangka = $record->tersangkas->pluck('nama')->join(', ');
+        $rowNumber = 1;
+        $recordsBySatkerId = $records->groupBy(fn (Kasus $record): int => (int) ($record->satker_id ?? 0));
 
-            self::setCell($sheet, 1, $row, $index + 1);
-            self::setCell($sheet, 2, $row, $record->satker?->nama ?? '-');
-            self::setCell($sheet, 3, $row, trim(($record->nomor_lp ?? '-')."\n".($record->tanggal_lp?->format('d-m-Y') ?? '-')));
-            self::setCell($sheet, 4, $row, $record->kronologi_kejadian ?: '-');
-            self::setCell($sheet, 5, $row, $record->tindak_pidana_pasal ?: '-');
-            self::setCell($sheet, 6, $row, $korban !== '' ? $korban : '-');
-            self::setCell($sheet, 7, $row, $tersangka !== '' ? $tersangka : '-');
-            self::setCell($sheet, 8, $row, $record->hubungan_pelaku_dengan_korban ?: '-');
-            self::setCell($sheet, 9, $row, $record->dokumen_status?->value === 'lidik' ? 1 : '');
-            self::setCell($sheet, 10, $row, $record->dokumen_status?->value === 'sidik' ? 1 : '');
-
-            $penyelesaianColumnIndex = 11;
-            foreach ($penyelesaianColumns as $column) {
-                self::setCell(
-                    $sheet,
-                    $penyelesaianColumnIndex,
-                    $row,
-                    (int) ($record->penyelesaian_id ?? 0) === (int) $column['id'] ? 1 : '',
-                );
-                $penyelesaianColumnIndex++;
+        foreach ($satkers as $satker) {
+            if (! $satker instanceof Satker) {
+                continue;
             }
 
-            $ket = '-';
+            $satkerRecords = $recordsBySatkerId->get((int) $satker->id, collect());
 
-            if ($record->latestRtl) {
-                $ket = sprintf(
-                    '%s - %s',
-                    $record->latestRtl->tanggal?->format('d-m-Y') ?? '-',
-                    $record->latestRtl->keterangan ?? '-',
-                );
+            if ($satkerRecords->isEmpty()) {
+                self::setCell($sheet, 1, $row, $rowNumber++);
+                self::setCell($sheet, 2, $row, $satker->nama);
+                self::setCell($sheet, 3, $row, 'NIHIL');
+                self::setCell($sheet, 4, $row, 'NIHIL');
+                self::setCell($sheet, 5, $row, 'NIHIL');
+                self::setCell($sheet, 6, $row, 'NIHIL');
+                self::setCell($sheet, 7, $row, 'NIHIL');
+                self::setCell($sheet, 8, $row, 'NIHIL');
+                self::setCell($sheet, 9, $row, '-');
+                self::setCell($sheet, 10, $row, '-');
+
+                $penyelesaianColumnIndex = 11;
+                foreach ($penyelesaianColumns as $column) {
+                    self::setCell($sheet, $penyelesaianColumnIndex, $row, '-');
+                    $penyelesaianColumnIndex++;
+                }
+
+                self::setCell($sheet, $penyelesaianColumnIndex, $row, 'NIHIL');
+                $row++;
+
+                continue;
             }
 
-            self::setCell($sheet, $penyelesaianColumnIndex, $row, $ket);
-            $row++;
+            foreach ($satkerRecords as $record) {
+                $korban = $record->korbans->pluck('nama')->join(', ');
+                $tersangka = $record->tersangkas->pluck('nama')->join(', ');
+
+                self::setCell($sheet, 1, $row, $rowNumber++);
+                self::setCell($sheet, 2, $row, $record->satker?->nama ?? $satker->nama);
+                self::setCell($sheet, 3, $row, trim(($record->nomor_lp ?? '-')."\n".($record->tanggal_lp?->format('d-m-Y') ?? '-')));
+                self::setCell($sheet, 4, $row, $record->kronologi_kejadian ?: '-');
+                self::setCell($sheet, 5, $row, $record->tindak_pidana_pasal ?: '-');
+                self::setCell($sheet, 6, $row, $korban !== '' ? $korban : '-');
+                self::setCell($sheet, 7, $row, $tersangka !== '' ? $tersangka : '-');
+                self::setCell($sheet, 8, $row, $record->hubungan_pelaku_dengan_korban ?: '-');
+                self::setCell($sheet, 9, $row, $record->dokumen_status?->value === 'lidik' ? 1 : '');
+                self::setCell($sheet, 10, $row, $record->dokumen_status?->value === 'sidik' ? 1 : '');
+
+                $penyelesaianColumnIndex = 11;
+                foreach ($penyelesaianColumns as $column) {
+                    self::setCell(
+                        $sheet,
+                        $penyelesaianColumnIndex,
+                        $row,
+                        (int) ($record->penyelesaian_id ?? 0) === (int) $column['id'] ? 1 : '',
+                    );
+                    $penyelesaianColumnIndex++;
+                }
+
+                $ket = '-';
+
+                if ($record->latestRtl) {
+                    $ket = sprintf(
+                        '%s - %s',
+                        $record->latestRtl->tanggal?->format('d-m-Y') ?? '-',
+                        $record->latestRtl->keterangan ?? '-',
+                    );
+                }
+
+                self::setCell($sheet, $penyelesaianColumnIndex, $row, $ket);
+                $row++;
+            }
         }
 
         $lastColumnIndex = $currentColumn;

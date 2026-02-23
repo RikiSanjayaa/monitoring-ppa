@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\KasusResource\Pages;
 
 use App\Filament\Resources\KasusResource;
+use App\Models\Satker;
 use App\Support\ExportDocumentTemplate;
 use App\Support\KasusRecapSummary;
 use App\Support\KasusTemplateSpreadsheet;
@@ -10,6 +11,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -42,6 +44,7 @@ class ListKasuses extends ListRecords
                         ])
                         ->get();
                     $recapData = KasusRecapSummary::fromCollection($records);
+                    $satkers = $this->resolveExportSatkers();
 
                     $satkerId = $this->resolveExportSatkerId($records);
                     $userId = Auth::id();
@@ -56,6 +59,7 @@ class ListKasuses extends ListRecords
                         'recapTitle' => $titles['recap'],
                         'signatureBlock' => ExportDocumentTemplate::signatureBlock($userId, $satkerId),
                         'recapData' => $recapData,
+                        'satkers' => $satkers,
                     ])->setPaper('a4', 'landscape');
 
                     return response()->streamDownload(
@@ -83,11 +87,12 @@ class ListKasuses extends ListRecords
                         ->get();
 
                     $satkerId = $this->resolveExportSatkerId($records);
+                    $satkers = $this->resolveExportSatkers();
                     $userId = Auth::id();
                     $periodDate = $this->resolveExportPeriodDate();
                     $titles = ExportDocumentTemplate::automaticTitles($records, $userId, $satkerId, $periodDate);
 
-                    $spreadsheet = KasusTemplateSpreadsheet::build($records, $satkerId, $userId, $titles);
+                    $spreadsheet = KasusTemplateSpreadsheet::build($records, $satkers, $satkerId, $userId, $titles);
                     $fileName = 'kasus-'.now()->format('Ymd_His').'.xlsx';
 
                     return response()->streamDownload(function () use ($spreadsheet): void {
@@ -144,5 +149,20 @@ class ListKasuses extends ListRecords
         }
 
         return null;
+    }
+
+    private function resolveExportSatkers(): Collection
+    {
+        $user = Auth::user();
+
+        $query = Satker::query()
+            ->select(['id', 'nama', 'kode', 'urutan'])
+            ->ordered();
+
+        if (data_get($user, 'role') === 'admin' && data_get($user, 'satker_id')) {
+            $query->whereKey((int) data_get($user, 'satker_id'));
+        }
+
+        return $query->get();
     }
 }

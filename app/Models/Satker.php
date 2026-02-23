@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,7 +20,20 @@ class Satker extends Model
         'nama',
         'tipe',
         'kode',
+        'urutan',
     ];
+
+    protected $casts = [
+        'urutan' => 'integer',
+    ];
+
+    public function scopeOrdered(Builder $query): Builder
+    {
+        return $query
+            ->orderByRaw('CASE WHEN urutan IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('urutan')
+            ->orderBy('kode');
+    }
 
     public function users(): HasMany
     {
