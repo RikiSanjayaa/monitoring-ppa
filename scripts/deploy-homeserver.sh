@@ -2,19 +2,6 @@
 
 set -euo pipefail
 
-log() {
-    printf '[%s] %s\n' "$(date '+%Y-%m-%d %H:%M:%S')" "$*"
-}
-
-run_step() {
-    local label="$1"
-    shift
-    local started_at=$SECONDS
-    log "START: ${label}"
-    "$@"
-    log "DONE: ${label} (${SECONDS-started_at}s)"
-}
-
 APP_DIR="${APP_DIR:-/opt/monitoring-ppa}"
 BRANCH="${BRANCH:-main}"
 FORCE_REBUILD="${FORCE_REBUILD:-0}"
@@ -58,10 +45,10 @@ resolve_sqlite_db_path() {
     printf '%s\n' "/var/www/html/${dbDatabase}"
 }
 
-run_step "Configure git safe.directory" git config --global --add safe.directory "${APP_DIR}"
-run_step "Fetch branch ${BRANCH}" git fetch origin "${BRANCH}"
-run_step "Checkout branch ${BRANCH}" git checkout "${BRANCH}"
-run_step "Pull latest branch ${BRANCH}" git pull --ff-only origin "${BRANCH}"
+git config --global --add safe.directory "${APP_DIR}"
+git fetch origin "${BRANCH}"
+git checkout "${BRANCH}"
+git pull --ff-only origin "${BRANCH}"
 
 if [[ ! -f .env ]]; then
     cp .env.example .env
@@ -91,19 +78,16 @@ if [[ "${FORCE_REBUILD}" == "1" || "${FORCE_REBUILD}" == "true" || "${IMAGE_UID_
     if [[ "${IMAGE_UID_GID_MISMATCH}" == "1" ]]; then
         echo "Detected app image UID/GID mismatch (image: ${IMAGE_UID}:${IMAGE_GID}, target: ${EFFECTIVE_UID}:${EFFECTIVE_GID}). Rebuilding app image..."
     fi
-    run_step "Build app image" env HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose build app
+    HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose build app
 elif ! docker image inspect "${APP_IMAGE}" > /dev/null 2>&1; then
     echo "Image ${APP_IMAGE} not found. Building app image first..."
-    run_step "Build app image (missing image)" env HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose build app
+    HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose build app
 fi
 
-run_step "Start containers" env HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose up -d --no-build
+HOST_UID="${EFFECTIVE_UID}" HOST_GID="${EFFECTIVE_GID}" compose up -d --no-build
 
-log "START: Read app www-data UID/GID"
-uid_gid_started_at=$SECONDS
 APP_UID="$(compose exec -T app id -u www-data | tr -d '\r')"
 APP_GID="$(compose exec -T app id -g www-data | tr -d '\r')"
-log "DONE: Read app www-data UID/GID (${SECONDS-uid_gid_started_at}s)"
 SQLITE_DB_PATH="$(resolve_sqlite_db_path || true)"
 SQLITE_DB_DIR=""
 
@@ -116,7 +100,7 @@ if [[ -n "${SQLITE_DB_PATH}" ]]; then
     SQLITE_DB_DIR="$(dirname "${SQLITE_DB_PATH}")"
 fi
 
-run_step "Fix storage/bootstrap permissions" compose exec -T --user root app sh -lc "
+compose exec -T --user root app sh -lc "
 set -eu
 mkdir -p /var/www/html/storage/framework/cache
 mkdir -p /var/www/html/storage/framework/sessions
@@ -130,7 +114,7 @@ find /var/www/html/storage /var/www/html/bootstrap/cache -type f -exec chmod 664
 "
 
 if [[ -n "${SQLITE_DB_PATH}" && -n "${SQLITE_DB_DIR}" ]]; then
-    run_step "Fix sqlite directory permissions" compose exec -T --user root app sh -lc "
+    compose exec -T --user root app sh -lc "
 set -eu
 mkdir -p '${SQLITE_DB_DIR}'
 touch '${SQLITE_DB_PATH}'
@@ -140,14 +124,14 @@ find '${SQLITE_DB_DIR}' -type f -exec chmod 664 {} \\;
 "
 fi
 
-run_step "Configure git safe.directory in app container" compose exec -T --user www-data -e HOME=/tmp app git config --global --add safe.directory /var/www/html || true
-run_step "Composer install (production)" compose exec -T --user www-data -e HOME=/tmp app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+compose exec -T --user www-data -e HOME=/tmp app git config --global --add safe.directory /var/www/html || true
+compose exec -T --user www-data -e HOME=/tmp app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
 if ! grep -qE '^APP_KEY=base64:' .env; then
-    run_step "Generate APP_KEY" compose exec -T --user www-data -e HOME=/tmp app php artisan key:generate --force
+    compose exec -T --user www-data -e HOME=/tmp app php artisan key:generate --force
 fi
-run_step "Run migrations" compose exec -T --user www-data -e HOME=/tmp app php artisan migrate --force
-run_step "Clear optimize cache" compose exec -T --user www-data -e HOME=/tmp app php artisan optimize:clear
-run_step "Clear filament optimize cache" compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize-clear
-run_step "Optimize Laravel" compose exec -T --user www-data -e HOME=/tmp app php artisan optimize
-run_step "Optimize Filament" compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize
-run_step "Restart queue workers" compose exec -T --user www-data -e HOME=/tmp app php artisan queue:restart
+compose exec -T --user www-data -e HOME=/tmp app php artisan migrate --force
+compose exec -T --user www-data -e HOME=/tmp app php artisan optimize:clear
+compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize-clear
+compose exec -T --user www-data -e HOME=/tmp app php artisan optimize
+compose exec -T --user www-data -e HOME=/tmp app php artisan filament:optimize
+compose exec -T --user www-data -e HOME=/tmp app php artisan queue:restart
