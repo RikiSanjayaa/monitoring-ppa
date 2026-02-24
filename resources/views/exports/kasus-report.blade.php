@@ -112,6 +112,65 @@
             page-break-inside: avoid;
         }
 
+        .detail-table {
+            table-layout: fixed;
+        }
+
+        .detail-table th,
+        .detail-table td {
+            padding: 3px;
+            white-space: normal;
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
+
+        .detail-table {
+            font-size: 8.8px;
+            line-height: 1.25;
+        }
+
+        .detail-table th {
+            font-size: 8px;
+            line-height: 1.15;
+        }
+
+        .detail-table .vertical-head,
+        .detail-table .vertical-cell {
+            padding: 1px 0.5px;
+        }
+
+        .detail-table .vertical-head>span {
+            font-size: 6px;
+            line-height: 1.05;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .detail-table .small {
+            font-size: 8px;
+            line-height: 1.2;
+        }
+
+        .detail-identitas-subhead {
+            font-size: 7px;
+            line-height: 1.05;
+            overflow-wrap: normal;
+            word-break: normal;
+        }
+
+        .detail-identitas-cell {
+            font-size: 8.4px;
+            line-height: 1.25;
+            overflow-wrap: break-word;
+            word-break: normal;
+        }
+
+        .detail-kronologi-head,
+        .detail-kronologi-cell {
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
         .signature {
             margin-top: 18px;
             width: 100%;
@@ -227,6 +286,32 @@
         .rekap tr {
             page-break-inside: avoid;
         }
+
+        .rekap-notes {
+            margin-top: 6px;
+            font-size: 8px;
+            line-height: 1.35;
+        }
+
+        .rekap-notes-title {
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        .rekap-notes ol {
+            margin: 0;
+            padding-left: 16px;
+        }
+
+        .rekap-notes li {
+            margin-bottom: 2px;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+        }
+
+        .rekap-notes li:last-child {
+            margin-bottom: 0;
+        }
     </style>
 </head>
 
@@ -282,6 +367,67 @@
             $totalKasusKeseluruhan > 0
                 ? number_format(($totalPenyelesaianPerkara / $totalKasusKeseluruhan) * 100, 2, ',', '.')
                 : '0,00';
+
+        $detailPenyelesaianColumnCount = max(1, $rekapPenyelesaianColumns->count());
+        $detailVerticalColumnCount = $dokumenGiatColumns->count() + $detailPenyelesaianColumnCount;
+        $detailNoWidth = 3.0;
+        $detailSatuanWidth = 4.2;
+        $detailLpWidth = 4.0;
+        $detailTpPasalWidth = 5.8;
+        $detailKorbanWidth = 15.0;
+        $detailTersangkaWidth = 15.0;
+        $detailHubunganWidth = 4.0;
+        $detailKetWidth = 3.8;
+        $detailVerticalWidth = 1.0;
+        $detailFixedWidth = $detailNoWidth
+            + $detailSatuanWidth
+            + $detailLpWidth
+            + $detailTpPasalWidth
+            + $detailKorbanWidth
+            + $detailTersangkaWidth
+            + $detailHubunganWidth
+            + $detailKetWidth
+            + ($detailVerticalColumnCount * $detailVerticalWidth);
+        $detailKronologiWidth = max(18.0, 100 - $detailFixedWidth);
+        $detailIdentitasWidth = $detailKorbanWidth + $detailTersangkaWidth;
+        $detailDokumenWidth = $dokumenGiatColumns->count() * $detailVerticalWidth;
+        $detailPenyelesaianWidth = $detailPenyelesaianColumnCount * $detailVerticalWidth;
+
+        $pasalInlineLimit = 45;
+        $tpPasalNotes = [];
+        $tpPasalNoteNumberByText = [];
+        $rekapRows = collect($recapData['rows'] ?? [])
+            ->values()
+            ->map(function ($row) use ($pasalInlineLimit, &$tpPasalNotes, &$tpPasalNoteNumberByText): array {
+                $row = (array) $row;
+                $fullPasal = trim((string) ($row['pasal'] ?? ''));
+
+                if ($fullPasal === '' || $fullPasal === '-') {
+                    $row['pasal_display'] = '-';
+
+                    return $row;
+                }
+
+                if (\Illuminate\Support\Str::length($fullPasal) <= $pasalInlineLimit) {
+                    $row['pasal_display'] = $fullPasal;
+
+                    return $row;
+                }
+
+                $normalizedPasal = preg_replace('/\s+/u', ' ', $fullPasal);
+                $normalizedPasal = is_string($normalizedPasal) ? trim($normalizedPasal) : $fullPasal;
+
+                if (! array_key_exists($normalizedPasal, $tpPasalNoteNumberByText)) {
+                    $noteNumber = count($tpPasalNotes) + 1;
+                    $tpPasalNoteNumberByText[$normalizedPasal] = $noteNumber;
+                    $tpPasalNotes[$noteNumber] = $fullPasal;
+                }
+
+                $noteNumber = $tpPasalNoteNumberByText[$normalizedPasal];
+                $row['pasal_display'] = \Illuminate\Support\Str::limit($fullPasal, $pasalInlineLimit, '…').' ['.$noteNumber.']';
+
+                return $row;
+            });
     @endphp
 
     @foreach ($jenisGroups as $jenisKasus => $groupedRecords)
@@ -289,7 +435,7 @@
             @if (! $loop->first)
                 <div class="detail-title">{{ strtoupper($jenisKasus) }}</div>
             @endif
-            <table>
+            <table class="detail-table">
                 @if ($loop->first)
                     <caption class="main-title-caption">
                         <div>{{ $mainTitle }}</div>
@@ -298,30 +444,30 @@
                 @endif
                 <thead>
                     <tr>
-                        <th rowspan="2" class="num">NO</th>
-                        <th rowspan="2">SATUAN</th>
-                        <th rowspan="2">LAPORAN POLISI/TGL</th>
-                        <th rowspan="2">KRONOLOGIS KEJADIAN</th>
-                        <th rowspan="2">TINDAK PIDANA/PASAL</th>
-                        <th colspan="2">IDENTITAS</th>
-                        <th rowspan="2">HUB. TERSANGKA DENGAN KORBAN</th>
-                        <th colspan="{{ $dokumenGiatColumns->count() }}">DOKUMEN/<br>GIAT</th>
-                        <th colspan="{{ max(1, $rekapPenyelesaianColumns->count()) }}">PENYELESAIAN PERKARA</th>
+                        <th rowspan="2" class="num" style="width: {{ $detailNoWidth }}%;">NO</th>
+                        <th rowspan="2" style="width: {{ $detailSatuanWidth }}%;">SATUAN</th>
+                        <th rowspan="2" style="width: {{ $detailLpWidth }}%;">LAPORAN<br>POLISI/TGL</th>
+                        <th rowspan="2" class="detail-kronologi-head" style="width: {{ $detailKronologiWidth }}%;">KRONOLOGIS KEJADIAN</th>
+                        <th rowspan="2" style="width: {{ $detailTpPasalWidth }}%;">TINDAK<br>PIDANA/PASAL</th>
+                        <th colspan="2" style="width: {{ $detailIdentitasWidth }}%;">IDENTITAS</th>
+                        <th rowspan="2" style="width: {{ $detailHubunganWidth }}%;">HUB T.<br>DG. K</th>
+                        <th colspan="{{ $dokumenGiatColumns->count() }}" style="width: {{ $detailDokumenWidth }}%;">DOKUMEN/<br>GIAT</th>
+                        <th colspan="{{ max(1, $rekapPenyelesaianColumns->count()) }}" style="width: {{ $detailPenyelesaianWidth }}%;">PENYELESAIAN PERKARA</th>
                         @if ($rekapPenyelesaianColumns->isEmpty())
-                            <th rowspan="2">-</th>
+                            <th rowspan="2" style="width: {{ $detailVerticalWidth }}%;">-</th>
                         @endif
-                        <th rowspan="2" class="vertical-head"><span>KET</span></th>
+                        <th rowspan="2" class="vertical-head" style="width: {{ $detailKetWidth }}%;"><span>KET</span></th>
                     </tr>
                     <tr>
-                        <th>KORBAN</th>
-                        <th>TERSANGKA</th>
+                        <th class="detail-identitas-subhead" style="width: {{ $detailKorbanWidth }}%;">KORBAN</th>
+                        <th class="detail-identitas-subhead" style="width: {{ $detailTersangkaWidth }}%;">TERSANGKA</th>
                         @foreach ($dokumenGiatColumns as $column)
-                            <th class="vertical-head"><span>{{ strtoupper((string) $column['label']) }}</span></th>
+                            <th class="vertical-head" style="width: {{ $detailVerticalWidth }}%;"><span>{{ strtoupper((string) $column['label']) }}</span></th>
                         @endforeach
                         @forelse ($rekapPenyelesaianColumns as $column)
-                            <th class="vertical-head"><span>{{ strtoupper((string) $column['label']) }}</span></th>
+                            <th class="vertical-head" style="width: {{ $detailVerticalWidth }}%;"><span>{{ strtoupper((string) $column['label']) }}</span></th>
                         @empty
-                            <th class="vertical-head"><span>-</span></th>
+                            <th class="vertical-head" style="width: {{ $detailVerticalWidth }}%;"><span>-</span></th>
                         @endforelse
                     </tr>
                 </thead>
@@ -340,10 +486,10 @@
                                 <td class="num">{{ $rowNumber++ }}</td>
                                 <td>{{ $satker->nama }}</td>
                                 <td class="center">NIHIL</td>
+                                <td class="center detail-kronologi-cell">NIHIL</td>
                                 <td class="center">NIHIL</td>
-                                <td class="center">NIHIL</td>
-                                <td class="center">NIHIL</td>
-                                <td class="center">NIHIL</td>
+                                <td class="center detail-identitas-cell">NIHIL</td>
+                                <td class="center detail-identitas-cell">NIHIL</td>
                                 <td class="center">NIHIL</td>
                                 <td class="vertical-cell">-</td>
                                 <td class="vertical-cell">-</td>
@@ -367,10 +513,10 @@
                                     <td>{{ $record->satker?->nama ?? $satker->nama }}</td>
                                     <td class="small">{{ $record->nomor_lp }}<br>{{ $record->tanggal_lp?->format('d-m-Y') }}
                                     </td>
-                                    <td>{{ $record->kronologi_kejadian ?: '-' }}</td>
+                                    <td class="detail-kronologi-cell">{{ $record->kronologi_kejadian ?: '-' }}</td>
                                     <td>{{ $record->tindak_pidana_pasal ?: '-' }}</td>
-                                    <td>{{ $korbanText !== '' ? $korbanText : '-' }}</td>
-                                    <td>{{ $tersangkaText !== '' ? $tersangkaText : '-' }}</td>
+                                    <td class="detail-identitas-cell">{{ $korbanText !== '' ? $korbanText : '-' }}</td>
+                                    <td class="detail-identitas-cell">{{ $tersangkaText !== '' ? $tersangkaText : '-' }}</td>
                                     <td>{{ $record->hubungan_pelaku_dengan_korban ?: '-' }}</td>
                                     <td class="vertical-cell">
                                         <span class="check-mark">
@@ -462,11 +608,11 @@
                 </tr>
             </thead>
             <tbody>
-                @foreach ($recapData['rows'] as $row)
+                @foreach ($rekapRows as $row)
                     <tr>
                         <td class="num">{{ $loop->iteration }}</td>
                         <td>{{ $row['jenis'] }}</td>
-                        <td>{{ $row['pasal'] }}</td>
+                        <td>{{ $row['pasal_display'] ?? '-' }}</td>
                         <td class="vertical-cell">{{ $row['jumlah_korban'] }}</td>
                         <td class="vertical-cell">{{ $row['jumlah_tersangka'] }}</td>
                         <td class="vertical-cell">{{ $row['jumlah_saksi'] }}</td>
@@ -508,6 +654,17 @@
                 </tr>
             </tbody>
         </table>
+
+        @if ($tpPasalNotes !== [])
+            <div class="rekap-notes">
+                <div class="rekap-notes-title">Catatan TP.Pasal:</div>
+                <ol>
+                    @foreach ($tpPasalNotes as $noteNumber => $pasalText)
+                        <li><strong>[{{ $noteNumber }}]</strong> {{ $pasalText }}</li>
+                    @endforeach
+                </ol>
+            </div>
+        @endif
     </div>
 
     <div class="signature">
