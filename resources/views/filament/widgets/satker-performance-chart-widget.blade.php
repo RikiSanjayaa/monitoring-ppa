@@ -46,24 +46,26 @@
                 },
 
                 loadChartJs() {
-                    return new Promise((resolve) => {
-                        if (window.Chart && window.ChartDataLabels) {
-                            resolve()
-                            return
-                        }
-                        const loadScript = (src) => new Promise((res) => {
-                            const s = document.createElement('script')
-                            s.src = src
-                            s.onload = () => res()
-                            document.head.appendChild(s)
-                        })
-                        loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js')
-                            .then(() => loadScript('https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'))
-                            .then(() => {
-                                Chart.register(ChartDataLabels)
-                                resolve()
-                            })
+                    const loadScript = (src) => new Promise((res, rej) => {
+                        const s = document.createElement('script')
+                        s.src = src
+                        s.onload = () => res()
+                        s.onerror = () => rej(new Error('Failed to load: ' + src))
+                        document.head.appendChild(s)
                     })
+
+                    return (async () => {
+                        if (!window.Chart) {
+                            await loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js')
+                        }
+                        if (!window.ChartDataLabels) {
+                            await loadScript('https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js')
+                        }
+                        if (window.ChartDataLabels && !window._chartDLRegistered) {
+                            Chart.register(ChartDataLabels)
+                            window._chartDLRegistered = true
+                        }
+                    })()
                 },
 
                 async changePeriode(newPeriode) {
@@ -105,13 +107,22 @@
                 },
 
                 renderChart() {
+                    const canvas = this.$refs.canvas
+                    if (!canvas) return
+
+                    // Check for existing chart instance on this specific canvas to prevent 'Canvas is already in use' error
+                    if (window.Chart && window.Chart.getChart) {
+                        const existingChart = window.Chart.getChart(canvas)
+                        if (existingChart) {
+                            existingChart.destroy()
+                        }
+                    }
+
                     if (this.chart) {
                         this.chart.destroy()
                         this.chart = null
                     }
 
-                    const canvas = this.$refs.canvas
-                    if (!canvas) return
                     const ctx = canvas.getContext('2d')
 
                     const dataValues = this.chartData.data
