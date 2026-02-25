@@ -47,14 +47,22 @@
 
                 loadChartJs() {
                     return new Promise((resolve) => {
-                        if (window.Chart) {
+                        if (window.Chart && window.ChartDataLabels) {
                             resolve()
                             return
                         }
-                        const script = document.createElement('script')
-                        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js'
-                        script.onload = () => resolve()
-                        document.head.appendChild(script)
+                        const loadScript = (src) => new Promise((res) => {
+                            const s = document.createElement('script')
+                            s.src = src
+                            s.onload = () => res()
+                            document.head.appendChild(s)
+                        })
+                        loadScript('https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js')
+                            .then(() => loadScript('https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js'))
+                            .then(() => {
+                                Chart.register(ChartDataLabels)
+                                resolve()
+                            })
                     })
                 },
 
@@ -198,6 +206,14 @@
                                         }
                                     }
                                 },
+                                datalabels: {
+                                    anchor: 'end',
+                                    align: 'right',
+                                    offset: 4,
+                                    color: tickColor,
+                                    font: { size: 11, weight: 'bold' },
+                                    formatter: (val) => val === 0 ? '' : val,
+                                },
                             },
                         },
                     }
@@ -266,6 +282,14 @@
                                             return val === 0 ? ' Nihil (0 Kasus)' : ' ' + val + ' Kasus'
                                         }
                                     }
+                                },
+                                datalabels: {
+                                    anchor: 'end',
+                                    align: 'top',
+                                    offset: 2,
+                                    color: tickColor,
+                                    font: { size: 12, weight: 'bold' },
+                                    formatter: (val) => val === 0 ? '' : val,
                                 },
                             },
                         },
