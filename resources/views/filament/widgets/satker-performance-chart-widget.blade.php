@@ -8,18 +8,40 @@
                 loading: false,
                 pendingRequest: null,
                 isDark: document.documentElement.classList.contains('dark'),
+                isMobile: window.innerWidth < 768,
 
                 async init() {
                     await this.loadChartJs()
-                    // Detect dark mode
                     this.isDark = document.documentElement.classList.contains('dark')
+                    this.isMobile = window.innerWidth < 768
                     this.renderChart()
+
+                    // Re-render on resize for responsive switching
+                    this._resizeHandler = this.debounce(() => {
+                        const wasMobile = this.isMobile
+                        this.isMobile = window.innerWidth < 768
+                        if (wasMobile !== this.isMobile) {
+                            this.renderChart()
+                        }
+                    }, 250)
+                    window.addEventListener('resize', this._resizeHandler)
                 },
 
                 destroy() {
                     if (this.chart) {
                         this.chart.destroy()
                         this.chart = null
+                    }
+                    if (this._resizeHandler) {
+                        window.removeEventListener('resize', this._resizeHandler)
+                    }
+                },
+
+                debounce(fn, ms) {
+                    let timer
+                    return (...args) => {
+                        clearTimeout(timer)
+                        timer = setTimeout(() => fn.apply(this, args), ms)
                     }
                 },
 
@@ -65,6 +87,15 @@
                     })
                 },
 
+                getStepSize(data) {
+                    const max = Math.max(...data, 1)
+                    if (max <= 10) return 1
+                    if (max <= 30) return 5
+                    if (max <= 100) return 10
+                    if (max <= 500) return 50
+                    return 100
+                },
+
                 renderChart() {
                     if (this.chart) {
                         this.chart.destroy()
@@ -77,23 +108,110 @@
 
                     const dataValues = this.chartData.data
                     const colors = this.getBarColors()
-
-                    // Adaptive text colors for light/dark mode
                     const tickColor = this.isDark ? '#e5e7eb' : '#374151'
                     const gridColor = this.isDark ? 'rgba(107, 114, 128, 0.3)' : 'rgba(156, 163, 175, 0.4)'
                     const borderColor = this.isDark ? '#6b7280' : '#d1d5db'
 
                     const displayLabels = this.chartData.labels.map((label, i) => {
-                        return dataValues[i] === 0 ? label + '\n(Nihil)' : label
+                        return dataValues[i] === 0 ? label + ' (Nihil)' : label
                     })
 
-                    this.chart = new Chart(ctx, {
+                    // Adjust container height for mobile horizontal layout
+                    const container = canvas.parentElement
+                    if (this.isMobile) {
+                        const barCount = displayLabels.length
+                        const rowHeight = 36
+                        const minHeight = 320
+                        container.style.height = Math.max(minHeight, barCount * rowHeight + 80) + 'px'
+                    } else {
+                        container.style.height = '370px'
+                    }
+
+                    const chartConfig = this.isMobile
+                        ? this.getMobileConfig(displayLabels, dataValues, colors, tickColor, gridColor, borderColor)
+                        : this.getDesktopConfig(displayLabels, dataValues, colors, tickColor, gridColor, borderColor)
+
+                    this.chart = new Chart(ctx, chartConfig)
+                },
+
+                // Mobile: horizontal bars — labels on left, easy to read
+                getMobileConfig(labels, data, colors, tickColor, gridColor, borderColor) {
+                    return {
                         type: 'bar',
                         data: {
-                            labels: displayLabels,
+                            labels: labels,
                             datasets: [{
                                 label: 'Jumlah Kasus',
-                                data: dataValues,
+                                data: data,
+                                backgroundColor: colors,
+                                borderColor: colors,
+                                borderWidth: 1,
+                                borderRadius: 4,
+                                barThickness: 18,
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            layout: {
+                                padding: { right: 8, left: 0, top: 4, bottom: 4 }
+                            },
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: this.getStepSize(data),
+                                        precision: 0,
+                                        color: tickColor,
+                                        font: { size: 11, weight: 'bold' },
+                                    },
+                                    grid: { color: gridColor },
+                                    border: { color: borderColor },
+                                },
+                                y: {
+                                    ticks: {
+                                        color: tickColor,
+                                        font: { size: 11, weight: '500' },
+                                        crossAlign: 'far',
+                                    },
+                                    grid: { display: false },
+                                    border: { color: borderColor },
+                                },
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                                    titleColor: '#f9fafb',
+                                    bodyColor: '#f3f4f6',
+                                    borderColor: '#6366f1',
+                                    borderWidth: 1,
+                                    cornerRadius: 8,
+                                    padding: 10,
+                                    titleFont: { size: 12, weight: 'bold' },
+                                    bodyFont: { size: 11 },
+                                    callbacks: {
+                                        label: function(context) {
+                                            const val = context.parsed.x
+                                            return val === 0 ? ' Nihil (0 Kasus)' : ' ' + val + ' Kasus'
+                                        }
+                                    }
+                                },
+                            },
+                        },
+                    }
+                },
+
+                // Desktop: vertical bars — labels at bottom
+                getDesktopConfig(labels, data, colors, tickColor, gridColor, borderColor) {
+                    return {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Jumlah Kasus',
+                                data: data,
                                 backgroundColor: colors,
                                 borderColor: colors,
                                 borderWidth: 1,
@@ -111,17 +229,13 @@
                                 y: {
                                     beginAtZero: true,
                                     ticks: {
-                                        stepSize: 1,
+                                        stepSize: this.getStepSize(data),
                                         precision: 0,
                                         color: tickColor,
                                         font: { size: 12, weight: 'bold' },
                                     },
-                                    grid: {
-                                        color: gridColor,
-                                    },
-                                    border: {
-                                        color: borderColor,
-                                    },
+                                    grid: { color: gridColor },
+                                    border: { color: borderColor },
                                 },
                                 x: {
                                     ticks: {
@@ -130,12 +244,8 @@
                                         maxRotation: 45,
                                         minRotation: 25,
                                     },
-                                    grid: {
-                                        display: false,
-                                    },
-                                    border: {
-                                        color: borderColor,
-                                    },
+                                    grid: { display: false },
+                                    border: { color: borderColor },
                                 },
                             },
                             plugins: {
@@ -159,7 +269,7 @@
                                 },
                             },
                         },
-                    })
+                    }
                 },
             }"
             x-init="init()"
