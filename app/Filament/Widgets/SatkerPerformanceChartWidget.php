@@ -3,64 +3,99 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Kasus;
-use App\Support\KasusDashboardFilters;
-use Filament\Widgets\ChartWidget;
-use Filament\Widgets\Concerns\InteractsWithPageFilters;
+use App\Models\Satker;
+use Filament\Widgets\Widget;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
-class SatkerPerformanceChartWidget extends ChartWidget
+class SatkerPerformanceChartWidget extends Widget
 {
-    use InteractsWithPageFilters;
+    protected static string $view = 'filament.widgets.satker-performance-chart-widget';
 
-    protected static ?string $heading = 'Satker Berdasarkan jumlah Kasus';
+    protected int|string|array $columnSpan = 'full';
 
-    protected int|string|array $columnSpan = [
-        'md' => 2,
-        'xl' => 1,
-    ];
-
-    protected static ?string $maxHeight = '280px';
+    public string $periode = 'bulan_ini';
 
     public static function canView(): bool
     {
-        return Auth::user()?->isSuperAdmin() ?? false;
+        return Auth::user()?->isSuperAdmin() || Auth::user()?->isAtasan();
     }
 
-    protected function getData(): array
+    /**
+     * @return array<string, mixed>
+     */
+    protected function getViewData(): array
     {
-        $records = KasusDashboardFilters::apply(Kasus::query(), $this->filters ?? [])
-            ->with('satker:id,nama')
-            ->get()
-            ->groupBy(fn (Kasus $kasus): string => $kasus->satker?->nama ?? '-')
-            ->map(fn ($items): int => $items->count())
-            ->sortDesc()
-            ->take(8);
-
         return [
-            'datasets' => [
-                [
-                    'label' => '',
-                    'data' => $records->values()->all(),
-                    'backgroundColor' => '#6366f1',
-                ],
-            ],
-            'labels' => $records->keys()->all(),
+            'chartData' => $this->getChartData(),
         ];
     }
 
-    protected function getType(): string
+    /**
+     * @return array<string, mixed>
+     */
+    public function getChartData(): array
     {
-        return 'bar';
+        $satkers = Satker::ordered()->get();
+
+        $query = Kasus::query();
+
+        $now = Carbon::now();
+
+        switch ($this->periode) {
+            case 'bulan_lalu':
+                $start = $now->copy()->subMonth()->startOfMonth();
+                $end = $now->copy()->subMonth()->endOfMonth();
+                $query->whereDate('tanggal_lp', '>=', $start)
+                    ->whereDate('tanggal_lp', '<=', $end);
+                break;
+
+            case '1_tahun':
+                $start = $now->copy()->subYear()->startOfMonth();
+                $end = $now->copy()->endOfMonth();
+                $query->whereDate('tanggal_lp', '>=', $start)
+                    ->whereDate('tanggal_lp', '<=', $end);
+                break;
+
+            case 'bulan_ini':
+            default:
+                $start = $now->copy()->startOfMonth();
+                $end = $now->copy()->endOfMonth();
+                $query->whereDate('tanggal_lp', '>=', $start)
+                    ->whereDate('tanggal_lp', '<=', $end);
+                break;
+        }
+
+        $kasusCounts = $query
+            ->selectRaw('satker_id, COUNT(*) as total')
+            ->groupBy('satker_id')
+            ->pluck('total', 'satker_id');
+
+        $labels = [];
+        $data = [];
+        $colors = [];
+
+        foreach ($satkers as $satker) {
+            $count = $kasusCounts->get($satker->id, 0);
+            $labels[] = $satker->nama;
+            $data[] = $count;
+            $colors[] = $count > 0 ? '#6366f1' : '#374151';
+        }
+
+        return [
+            'labels' => $labels,
+            'data' => $data,
+            'colors' => $colors,
+        ];
     }
 
-    protected function getOptions(): array
+    /**
+     * Called from Alpine via $wire to fetch new chart data for a given period.
+     */
+    public function fetchChartData(string $periode): array
     {
-        return [
-            'plugins' => [
-                'legend' => [
-                    'display' => false,
-                ],
-            ],
-        ];
+        $this->periode = $periode;
+
+        return $this->getChartData();
     }
 }

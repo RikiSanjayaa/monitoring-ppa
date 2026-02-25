@@ -446,7 +446,7 @@ class KasusResource extends Resource
                 Tables\Filters\SelectFilter::make('satker_id')
                     ->label('Satker')
                     ->relationship('satker', 'nama')
-                    ->visible(fn (): bool => Auth::user()?->isSuperAdmin() ?? false),
+                    ->visible(fn (): bool => Auth::user()?->isSuperAdmin() || Auth::user()?->isAtasan()),
                 Tables\Filters\SelectFilter::make('perkara_id')
                     ->label('Jenis Kasus')
                     ->relationship('perkara', 'nama'),

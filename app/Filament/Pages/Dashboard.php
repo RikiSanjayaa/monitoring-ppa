@@ -18,13 +18,13 @@ class Dashboard extends BaseDashboard
             StatsOverviewWidget::class,
             KasusTrendChartWidget::class,
             KasusPerJenisChartWidget::class,
-            SatkerPerformanceChartWidget::class,
         ];
     }
 
     protected function getFooterWidgets(): array
     {
         return [
+            SatkerPerformanceChartWidget::class,
             SummaryTableWidget::class,
             LatestKasusWidget::class,
         ];
